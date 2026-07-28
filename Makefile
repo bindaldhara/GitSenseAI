@@ -58,3 +58,9 @@ docker-down:
 
 docker-logs:
 	$(COMPOSE) logs -f
+
+run-postgress-local:
+	brew services start postgresql@16
+
+stop-postgress-local:
+	brew services stop postgresql@16

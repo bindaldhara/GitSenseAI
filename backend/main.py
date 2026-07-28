@@ -1,13 +1,23 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import health, root
+from api.routes import health, repositories, root
 from config import settings
+from db import initialize_database
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    initialize_database()
+    yield
 
 app = FastAPI(
     title=settings.app_name,
     description="Agentic Software Intelligence Platform",
     version=settings.app_version,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -20,3 +30,4 @@ app.add_middleware(
 
 app.include_router(root.router)
 app.include_router(health.router, prefix=settings.api_v1_prefix)
+app.include_router(repositories.router, prefix=settings.api_v1_prefix)
