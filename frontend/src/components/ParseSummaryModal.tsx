@@ -173,7 +173,7 @@ export function ParseSummaryModal({ repository, open, onClose }: ParseSummaryMod
           isClosing ? 'animate-scale-out' : 'animate-scale-in'
         }`}
       >
-        <div className="border-b border-white/10 bg-gradient-to-r from-brand-600/20 via-transparent to-transparent px-6 py-5">
+        <div className="border-b border-white/10 bg-linear-to-r from-brand-600/20 via-transparent to-transparent px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-brand-400/20 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-100">
