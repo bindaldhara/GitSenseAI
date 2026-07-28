@@ -23,7 +23,5 @@ backend/app/data/repos/
 .idea/
 .vscode/
 .cursor/
-README.md
-QnA.md
-PRODUCT_DOC.md
-learnings.md
+docs/
+.dockerignore

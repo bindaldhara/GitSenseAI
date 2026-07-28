@@ -4,6 +4,8 @@ Last updated: 2026-07-28
 
 - Queue cloning for background processing
 - Clone private repositories
+
+
 - Async-aware dashboard status
 - Full file AST dump plus symbols
 - Chunking + embeddings + Qdrant ingestion
