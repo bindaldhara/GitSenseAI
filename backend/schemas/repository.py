@@ -21,3 +21,39 @@ class RepositoryResponse(BaseModel):
 
 class RepositoryListResponse(BaseModel):
     repositories: list[RepositoryResponse]
+
+
+class SymbolResponse(BaseModel):
+    id: int
+    name: str
+    kind: str
+    start_line: int
+    end_line: int
+    signature: str | None
+    parent_name: str | None
+    file_path: str
+    language: str
+
+
+class SkippedFileResponse(BaseModel):
+    path: str
+    reason: str
+
+
+class RepositoryParseSummaryResponse(BaseModel):
+    repository_id: int
+    file_count: int
+    symbol_count: int
+    skipped_count: int
+    by_language: dict[str, int]
+    by_kind: dict[str, int]
+    by_skip_reason: dict[str, int]
+    skipped_files: list[SkippedFileResponse]
+    skipped_returned: int
+    skipped_limit: int
+
+
+class RepositorySymbolsResponse(RepositoryParseSummaryResponse):
+    symbols: list[SymbolResponse]
+    symbols_returned: int
+    symbols_limit: int

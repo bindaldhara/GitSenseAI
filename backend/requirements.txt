@@ -6,3 +6,8 @@ redis
 qdrant-client
 celery
 httpx
+tree-sitter>=0.23
+tree-sitter-python
+tree-sitter-javascript
+tree-sitter-typescript
+tree-sitter-go

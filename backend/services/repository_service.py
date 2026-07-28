@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 
 from config import settings
 from db import db_cursor
+from parsers import clear_parsed_data, parse_repository
 from services.cleanup_hooks import (
     cleanup_graph_for_repository,
     cleanup_qdrant_for_repository,
@@ -124,9 +125,9 @@ def create_repository_submission(raw_url: str) -> dict:
             detail=f"Unexpected repository cloning failure: {exc}",
         ) from exc
 
-    return mark_repository_status(
+    return _parse_and_finalize(
         created_record["id"],
-        status_value="cloned",
+        repository.clone_path,
         default_branch=default_branch,
     )
 
@@ -137,6 +138,8 @@ def delete_repository(repository_id: int) -> None:
 
     cleanup_qdrant_for_repository(repository_id, record["full_name"])
     cleanup_graph_for_repository(repository_id, record["full_name"])
+    # Parsed files/symbols also cascade via FK on repository delete; clear early for clarity.
+    clear_parsed_data(repository_id)
     remove_clone_directory(clone_path)
 
     with db_cursor(commit=True) as cursor:
@@ -157,9 +160,10 @@ def reindex_repository(repository_id: int) -> dict:
         provider=record["provider"],
     )
 
-    # Clear derived indexes first so stale embeddings/graph data cannot linger.
+    # Clear derived indexes first so stale embeddings/graph/parse data cannot linger.
     cleanup_qdrant_for_repository(repository_id, repository.full_name)
     cleanup_graph_for_repository(repository_id, repository.full_name)
+    clear_parsed_data(repository_id)
 
     mark_repository_status(repository_id, status_value="reindexing")
     remove_clone_directory(repository.clone_path)
@@ -177,15 +181,45 @@ def reindex_repository(repository_id: int) -> dict:
             detail=f"Unexpected repository re-index failure: {exc}",
         ) from exc
 
-    updated = mark_repository_status(
+    updated = _parse_and_finalize(
+        repository_id,
+        repository.clone_path,
+        default_branch=default_branch,
+    )
+
+    # Placeholder for Day 5+ chunking/embeddings after a successful re-clone + parse.
+    reembed_repository(repository_id, repository.full_name, str(repository.clone_path))
+    return updated
+
+
+def _parse_and_finalize(
+    repository_id: int,
+    clone_path: Path,
+    *,
+    default_branch: str | None,
+) -> dict:
+    mark_repository_status(
+        repository_id,
+        status_value="parsing",
+        default_branch=default_branch,
+    )
+    try:
+        parse_repository(repository_id, clone_path)
+    except HTTPException as exc:
+        mark_repository_status(repository_id, status_value="failed")
+        raise exc
+    except Exception as exc:
+        mark_repository_status(repository_id, status_value="failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Repository parsing failed: {exc}",
+        ) from exc
+
+    return mark_repository_status(
         repository_id,
         status_value="cloned",
         default_branch=default_branch,
     )
-
-    # Placeholder for Day 5+ chunking/embeddings after a successful re-clone.
-    reembed_repository(repository_id, repository.full_name, str(repository.clone_path))
-    return updated
 
 
 def insert_repository_record(repository: ParsedRepository) -> dict:

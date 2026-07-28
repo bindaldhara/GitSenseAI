@@ -1,4 +1,4 @@
-import type { Repository } from '@/types/repository'
+import type { Repository, RepositoryParseSummary } from '@/types/repository'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 
 export async function fetchRepositories() {
@@ -39,5 +39,17 @@ export async function reindexRepository(repositoryId: number) {
     return data
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Repository re-index failed'))
+  }
+}
+
+export async function fetchParseSummary(repositoryId: number, skippedLimit = 20) {
+  try {
+    const { data } = await apiClient.get<RepositoryParseSummary>(
+      `/api/v1/repositories/${repositoryId}/parse-summary`,
+      { params: { skipped_limit: skippedLimit } },
+    )
+    return data
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Failed to load parse summary'))
   }
 }

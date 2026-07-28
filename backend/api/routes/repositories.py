@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Query, Response, status
 
+from parsers import get_repository_parse_summary, get_repository_symbols
 from schemas.repository import (
     RepositoryCreate,
     RepositoryListResponse,
+    RepositoryParseSummaryResponse,
     RepositoryResponse,
+    RepositorySymbolsResponse,
 )
 from services.repository_service import (
     create_repository_submission,
@@ -25,6 +28,35 @@ def read_repositories() -> RepositoryListResponse:
 def submit_repository(payload: RepositoryCreate) -> RepositoryResponse:
     repository = create_repository_submission(str(payload.url))
     return RepositoryResponse.model_validate(repository)
+
+
+@router.get(
+    "/{repository_id}/parse-summary",
+    response_model=RepositoryParseSummaryResponse,
+)
+def read_repository_parse_summary(
+    repository_id: int,
+    skipped_limit: int = Query(default=100, ge=1, le=1000),
+) -> RepositoryParseSummaryResponse:
+    payload = get_repository_parse_summary(
+        repository_id,
+        skipped_limit=skipped_limit,
+    )
+    return RepositoryParseSummaryResponse.model_validate(payload)
+
+
+@router.get("/{repository_id}/symbols", response_model=RepositorySymbolsResponse)
+def read_repository_symbols(
+    repository_id: int,
+    limit: int = Query(default=1000, ge=1, le=10000),
+    skipped_limit: int = Query(default=100, ge=1, le=1000),
+) -> RepositorySymbolsResponse:
+    payload = get_repository_symbols(
+        repository_id,
+        limit=limit,
+        skipped_limit=skipped_limit,
+    )
+    return RepositorySymbolsResponse.model_validate(payload)
 
 
 @router.delete("/{repository_id}", status_code=status.HTTP_204_NO_CONTENT)
