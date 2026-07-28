@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 
-import { fetchHealth } from '@/lib/api'
+import { fetchHealth } from '@/api/health'
 
 const introMarkdown = `
 **GitSense AI** is an Agentic Software Intelligence Platform.

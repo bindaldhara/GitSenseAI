@@ -1,0 +1,243 @@
+GitSense AI — Interview Answers
+================================
+Source questions: docs/learnings.md
+Keep this file in sync when learnings interview questions change.
+
+----------------------------------------------------------------------------
+FRONTEND
+----------------------------------------------------------------------------
+
+Q1. Why use React Router instead of keeping everything in one App.tsx component?
+A1. A single App.tsx mixes landing content with repository management and does not
+    scale. React Router gives clear URLs (/ and /repositories), shared layout via
+    Outlet, and independent page components. That matches a product that will grow
+    into chat, dashboards, and multi-session flows without rewriting one giant file.
+
+Q2. What is the difference between BrowserRouter, Routes, Route, Outlet, and NavLink?
+A2. BrowserRouter enables HTML5 history-based client routing.
+    Routes is the route table container.
+    Route maps a path to a page element.
+    Outlet is the placeholder where nested child routes render (used in AppLayout).
+    NavLink is a Link that can style itself when the current path is active.
+
+Q3. How does React Query’s useMutation + invalidateQueries keep the repositories
+    list fresh after submit?
+A3. useMutation runs POST /api/v1/repositories. On success, invalidateQueries with
+    key ['repositories'] marks the list query stale. React Query refetches GET
+    /api/v1/repositories, so the UI shows the new row without manual setState list
+    merging.
+
+Q4. When would you prefer React Query over local useState for API data?
+A4. Prefer React Query for server state: caching, retries, loading/error flags,
+    background refetch, and shared cache across components. useState is better for
+    pure UI state (form input text, modal open/closed) that does not come from an API.
+
+Q5. Why keep API calls in lib/api.ts instead of calling fetch inside every page?
+A5. Centralizing fetch keeps base URL, headers, and error parsing in one place.
+    Pages stay focused on UI. When endpoints change, you update api.ts once instead
+    of hunting through components.
+
+Q6. What problem does Vite’s proxy solve in local development?
+A6. The browser may call same-origin /api paths while Vite forwards them to
+    localhost:8000. That reduces CORS friction during local frontend development
+    when the API runs on another port. (This project also supports VITE_API_URL for
+    direct calls to the backend.)
+
+Q7. Why is markdown rendering important for an AI product UI?
+A7. LLMs commonly return markdown (code blocks, lists, headings). Rendering it
+    safely with react-markdown makes answers readable. GitSense will later show
+    chat answers and generated docs as markdown.
+
+Q8. How would you add a third route (for example Chat) without rewriting the layout?
+A8. Keep AppLayout with the header/nav and Outlet. Add a ChatPage component and a
+    new Route path="/chat" under the same layout Route. Add a NavLink to Chat in
+    the header. Home and Repositories stay untouched.
+
+Q9. What happens in Docker if you add a new npm package but the frontend container
+    keeps an old anonymous node_modules volume?
+A9. Compose mounts host source into /app but keeps /app/node_modules in a Docker
+    volume. Old volumes lack new packages like react-router-dom, so Vite fails to
+    resolve imports even though package.json lists them. Fix by rebuilding and
+    removing the stale volume, or running npm install inside the container / on
+    container start.
+
+Q10. How would Socket.io later complement React Query for streaming chat?
+A10. React Query fits request/response and cached resources (repo list, health).
+     Socket.io fits push streams: token-by-token chat, indexing progress, live
+     status. Typical pattern: React Query for snapshot data; Socket.io for live
+     event streams that update UI as events arrive.
+
+----------------------------------------------------------------------------
+BACKEND
+----------------------------------------------------------------------------
+
+Q1. Why separate route handlers (repositories.py) from business logic
+    (repository_service.py)?
+A1. Routes handle HTTP concerns (status codes, request body models, response
+    models). The service owns validation, SQL, and git clone. That keeps handlers
+    thin, makes logic reusable (workers/MCP later), and is easier to test.
+
+Q2. What does FastAPI’s lifespan do, and why initialize the DB there?
+A2. Lifespan runs startup code before serving and optional shutdown after.
+    initialize_database() ensures the repositories table exists once at boot so
+    every request does not recreate schema. It is the right place for one-time
+    wiring.
+
+Q3. How does APIRouter prefix stacking produce /api/v1/repositories?
+A3. repositories.router has prefix="/repositories". main.py includes it with
+    prefix=settings.api_v1_prefix ("/api/v1"). Final path =
+    /api/v1 + /repositories + route path "" → /api/v1/repositories.
+
+Q4. Why make POSTGRES_* required in Settings instead of hardcoding defaults?
+A4. Required env vars fail fast if .env is missing or wrong. That prevents
+    accidentally connecting to the wrong host (for example silent default
+    localhost while Docker expects postgres). Secrets and environment-specific
+    hosts should not live as code defaults.
+
+Q5. Explain @computed_field vs a plain @property in Pydantic Settings.
+A5. @property makes a derived Python attribute (database_url from parts).
+    @computed_field also registers it with Pydantic so it participates in the
+    model’s schema/serialization as a first-class field, not only as a plain
+    Python property.
+
+Q6. Why clone with git clone --depth 1 instead of a full clone for Day 3?
+A6. Depth 1 is a shallow clone of the latest commit. It is faster and uses less
+    disk/network, which is enough for Day 3 (get the tree on disk). Full history
+    can come later if blame/history analysis needs it.
+
+Q7. Why mark status cloning before clone and failed/cloned after?
+A7. Inserting cloning first records intent and makes progress visible if the
+    request is slow. Updating to cloned or failed makes the final outcome durable
+    even if the HTTP client times out. Without failure updates, rows can stick at
+    cloning forever.
+
+Q8. What HTTP status codes fit: invalid URL, duplicate repo, missing git binary,
+    clone failure?
+A8. Invalid GitHub URL → 422 Unprocessable Entity.
+    Duplicate submission → 409 Conflict.
+    Missing git binary → 500 Internal Server Error (server misconfigured).
+    git clone failure (network/remote) → 502 Bad Gateway (upstream/git failed).
+
+Q9. Why is synchronous cloning acceptable for Day 3 but risky for large repos later?
+A9. Day 3 keeps the flow simple and easy to debug: one request does validate →
+    DB → clone → response. Large repos can block the worker for minutes, exhaust
+    timeouts, and hurt concurrency. Later, enqueue Celery jobs and return quickly
+    with status polling.
+
+Q10. How would Celery change the submit-repository flow?
+A10. POST would create a row (status=queued/cloning) and enqueue a clone task,
+     then return 202/201 immediately. A worker runs git clone and updates status.
+     The UI polls GET /repositories or uses websockets for progress instead of
+     waiting on one long HTTP request.
+
+----------------------------------------------------------------------------
+DATA AND INFRASTRUCTURE
+----------------------------------------------------------------------------
+
+Q1. Why store repository metadata in PostgreSQL and the code itself on disk?
+A1. Postgres is good for structured records: id, url, status, timestamps, query/
+    filter. Source trees are large binary/text trees better kept as files for
+    parsers and git operations. Metadata in DB, content on disk is a common split.
+
+Q2. Why should cloned repos under data/repos/ be gitignored?
+A2. Each clone is its own git repo. Committing them creates embedded-repo warnings,
+    huge diffs, and broken clones for other developers. Clones are regenerable
+    via the submit API; only metadata belongs in the project repo.
+
+Q3. What is the difference between POSTGRES_HOST=postgres and
+    POSTGRES_HOST=localhost?
+A3. postgres is the Compose service DNS name — works only inside the Docker
+    network (backend container → postgres container). localhost is the host machine
+    loopback — used by Mac apps (Postico) and a backend started with make backend
+    against Homebrew or published Docker ports.
+
+Q4. Why can Postico fail with “hostname not found” when host is set to postgres?
+A4. Postico runs on the Mac, outside Docker’s network. The name postgres is not
+    resolvable on the Mac. Use localhost and the published port 5432 instead.
+
+Q5. What is the difference between a Dockerfile and Docker Compose?
+A5. A Dockerfile builds one image (how to package frontend or backend). Compose
+    defines and runs a multi-service stack (frontend, backend, postgres, redis,
+    qdrant), networking, ports, volumes, and env files together.
+
+Q6. Why run Redis and Qdrant in Compose before the app reads from them?
+A6. Day 2 provisions infra early so Day 5+ work does not fight setup later.
+    Services can be healthy and reachable while app code still only uses Postgres.
+    This matches incremental Week 1 delivery.
+
+Q7. What is an anonymous Docker volume, and how did it break react-router-dom
+    until rebuilt?
+A7. Compose uses /app/node_modules as an anonymous volume so host mounts do not
+    wipe container dependencies. That volume kept an older install without
+    react-router-dom after package.json changed. Source had new imports; modules
+    did not. Rebuild + remove stale volume (or npm install in container) fixed it.
+
+Q8. Why install git in the backend image for Day 3?
+A8. Cloning uses subprocess git. python:3.12-slim does not include git by default.
+    Without git, clone fails and can leave status stuck. Installing git in the
+    Dockerfile makes the container able to clone.
+
+Q9. How would you evolve Day 3 into Day 5 (embeddings + Qdrant) without rewriting
+    the repositories API?
+A9. Keep POST/GET repositories as the metadata entrypoint. After clone (or in a
+    worker), add an indexing pipeline that reads clone_path, chunks files, embeds,
+    and upserts into Qdrant keyed by repository id. Clients can keep submitting
+    URLs the same way; indexing becomes a follow-on stage updating status fields.
+
+Q10. What data belongs in Postgres vs Qdrant vs Redis in the full GitSense design?
+A10. Postgres: users, repos, chat sessions/history, job status, structured metadata.
+     Qdrant: vector embeddings and payloads for semantic retrieval.
+     Redis: semantic/response cache, rate limits, Celery broker/results, short-lived
+     session or progress keys.
+
+----------------------------------------------------------------------------
+PRACTICE PROMPTS (MODEL ANSWERS)
+----------------------------------------------------------------------------
+
+P1. Explain the current GitSense AI architecture in 2 minutes (through Day 3).
+A.  GitSense is a full-stack MVP: React/Vite/Tailwind UI with React Router pages
+    for Home and Repositories, talking to a FastAPI backend. Backend persists
+    repository metadata in PostgreSQL and clones public GitHub repos with git to
+    a local workspace. Docker Compose can run frontend, backend, Postgres, Redis,
+    and Qdrant; Redis/Qdrant are provisioned but not used by app logic yet. Day 3
+    ends at submit + clone + list; RAG/agents are later weeks.
+
+P2. Walk through what happens when a user submits https://github.com/owner/repo.
+A.  Frontend POSTs JSON {url} to /api/v1/repositories. FastAPI validates the body,
+    service parses/normalizes the GitHub URL, rejects non-GitHub or duplicates,
+    inserts a row with status=cloning, runs git clone --depth 1 into the configured
+    clone directory, updates status to cloned (or failed), and returns the row.
+    React Query invalidates the list query so the dashboard refreshes.
+
+P3. Why are React Query and FastAPI a strong pair for this MVP?
+A.  FastAPI gives typed request/response models and clear REST endpoints. React
+    Query consumes those endpoints with caching, mutations, and loading/error UX.
+    Together they keep HTTP concerns explicit and UI state for server data clean,
+    which is ideal while the product is still endpoint-driven before streaming.
+
+P4. Compare local Homebrew Postgres vs Docker Compose Postgres for development.
+A.  Homebrew: Postgres on the Mac, POSTGRES_HOST=localhost, no Docker daemon needed
+    for DB, good for make backend. Compose: Postgres in a container named postgres,
+    POSTGRES_HOST=postgres for the backend container, same published localhost:5432
+    for Mac UIs. Compose matches production-like multi-service setups; Homebrew is
+    lighter when Docker is unavailable.
+
+P5. How would you move cloning from request/response to a background worker without
+    breaking the UI?
+A.  Change POST to create a queued row and enqueue a Celery task; return quickly.
+    Keep GET /repositories for status. UI already shows status badges — poll or
+    websocket until cloned/failed. Same API contract for listing; only submit
+    timing and status transitions change.
+
+P6. Describe how you would add authentication and multi-user repository ownership
+    later.
+A.  Add JWT auth (Week 2 plan): users table, login/register, protect repository
+    routes. Add user_id (or org_id) on repositories and filter list/create by owner.
+    Frontend stores token and sends Authorization header from api.ts.
+
+P7. Design the next week: parsers → chunking → embeddings → chat retrieval.
+A.  Day 4: parse Go/Python/JS/TS from clone_path into symbols/files.
+    Day 5: chunk, embed, upsert into Qdrant with repo/file metadata.
+    Day 6: chat API retrieves relevant chunks and generates answers with citations.
+    Day 7: polish chat UI and repository dashboard. Keep repositories API as the
+    intake that kicks off indexing after clone.

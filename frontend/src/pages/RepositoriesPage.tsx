@@ -2,11 +2,18 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { fetchRepositories, submitRepository } from '@/lib/api'
+import {
+  deleteRepository,
+  fetchRepositories,
+  reindexRepository,
+  submitRepository,
+} from '@/api/repositories'
 
 export function RepositoriesPage() {
   const queryClient = useQueryClient()
   const [repositoryUrl, setRepositoryUrl] = useState('')
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [pendingActionId, setPendingActionId] = useState<number | null>(null)
 
   const {
     data: repositoriesData,
@@ -22,11 +29,47 @@ export function RepositoriesPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['repositories'] })
       setRepositoryUrl('')
+      setActionError(null)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteRepository,
+    onMutate: (repositoryId) => {
+      setPendingActionId(repositoryId)
+      setActionError(null)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['repositories'] })
+    },
+    onError: (error: Error) => {
+      setActionError(error.message)
+    },
+    onSettled: () => {
+      setPendingActionId(null)
+    },
+  })
+
+  const reindexMutation = useMutation({
+    mutationFn: reindexRepository,
+    onMutate: (repositoryId) => {
+      setPendingActionId(repositoryId)
+      setActionError(null)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['repositories'] })
+    },
+    onError: (error: Error) => {
+      setActionError(error.message)
+    },
+    onSettled: () => {
+      setPendingActionId(null)
     },
   })
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setActionError(null)
     repositoryMutation.mutate(repositoryUrl)
   }
 
@@ -39,7 +82,8 @@ export function RepositoriesPage() {
         <h2 className="text-3xl font-bold tracking-tight text-white">Repositories</h2>
         <p className="mt-2 max-w-2xl text-slate-400">
           Submit a public GitHub URL. The backend saves it in Postgres and clones it into the
-          local repository workspace.
+          local repository workspace. Use re-index to re-clone, or delete to remove the DB row
+          and local clone.
         </p>
       </section>
 
@@ -95,41 +139,78 @@ export function RepositoriesPage() {
         <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
           <h3 className="mb-4 text-lg font-semibold text-white">Submitted Repositories</h3>
 
+          {actionError ? (
+            <p className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {actionError}
+            </p>
+          ) : null}
+
           {repositoriesLoading ? (
             <p className="text-sm text-slate-400">Loading repository history...</p>
           ) : repositoriesError ? (
             <p className="text-sm text-red-300">Could not load repositories from the API.</p>
           ) : repositoriesData && repositoriesData.repositories.length > 0 ? (
             <div className="space-y-3">
-              {repositoriesData.repositories.map((repository) => (
-                <div
-                  key={repository.id}
-                  className="rounded-lg border border-white/10 bg-slate-950/40 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-white">{repository.full_name}</p>
-                      <a
-                        href={repository.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-brand-200 hover:text-brand-100"
-                      >
-                        {repository.url}
-                      </a>
+              {repositoriesData.repositories.map((repository) => {
+                const isBusy =
+                  pendingActionId === repository.id &&
+                  (deleteMutation.isPending || reindexMutation.isPending)
+
+                return (
+                  <div
+                    key={repository.id}
+                    className="rounded-lg border border-white/10 bg-slate-950/40 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white">{repository.full_name}</p>
+                        <a
+                          href={repository.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-brand-200 hover:text-brand-100"
+                        >
+                          {repository.url}
+                        </a>
+                      </div>
+                      <span className="rounded-full bg-brand-600/20 px-2.5 py-1 text-xs font-medium text-brand-100">
+                        {repository.status}
+                      </span>
                     </div>
-                    <span className="rounded-full bg-brand-600/20 px-2.5 py-1 text-xs font-medium text-brand-100">
-                      {repository.status}
-                    </span>
+                    <p className="mt-3 text-xs text-slate-400">
+                      Clone path: <span className="font-mono">{repository.clone_path}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Default branch: {repository.default_branch ?? 'unknown'}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => reindexMutation.mutate(repository.id)}
+                        className="rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isBusy && reindexMutation.isPending ? 'Re-indexing...' : 'Re-index'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            `Are you sure you want to delete ${repository.full_name}?`,
+                          )
+                          if (confirmed) {
+                            deleteMutation.mutate(repository.id)
+                          }
+                        }}
+                        className="rounded-md border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isBusy && deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
-                  <p className="mt-3 text-xs text-slate-400">
-                    Clone path: <span className="font-mono">{repository.clone_path}</span>
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Default branch: {repository.default_branch ?? 'unknown'}
-                  </p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-slate-400">

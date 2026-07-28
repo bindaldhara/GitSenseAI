@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +12,11 @@ from fastapi import HTTPException, status
 
 from config import settings
 from db import db_cursor
+from services.cleanup_hooks import (
+    cleanup_graph_for_repository,
+    cleanup_qdrant_for_repository,
+    reembed_repository,
+)
 
 
 GITHUB_HOSTS = {"github.com", "www.github.com"}
@@ -66,6 +72,25 @@ def list_repositories() -> list[dict]:
         return list(cursor.fetchall())
 
 
+def get_repository_by_id(repository_id: int) -> dict:
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, url, full_name, provider, status, clone_path, default_branch, created_at, updated_at
+            FROM repositories
+            WHERE id = %s
+            """,
+            (repository_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Repository with id {repository_id} was not found.",
+            )
+        return row
+
+
 def create_repository_submission(raw_url: str) -> dict:
     repository = parse_github_repository_url(raw_url)
 
@@ -104,6 +129,63 @@ def create_repository_submission(raw_url: str) -> dict:
         status_value="cloned",
         default_branch=default_branch,
     )
+
+
+def delete_repository(repository_id: int) -> None:
+    record = get_repository_by_id(repository_id)
+    clone_path = Path(record["clone_path"])
+
+    cleanup_qdrant_for_repository(repository_id, record["full_name"])
+    cleanup_graph_for_repository(repository_id, record["full_name"])
+    remove_clone_directory(clone_path)
+
+    with db_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM repositories WHERE id = %s", (repository_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Repository with id {repository_id} was not found.",
+            )
+
+
+def reindex_repository(repository_id: int) -> dict:
+    record = get_repository_by_id(repository_id)
+    repository = ParsedRepository(
+        url=record["url"],
+        full_name=record["full_name"],
+        clone_path=Path(record["clone_path"]),
+        provider=record["provider"],
+    )
+
+    # Clear derived indexes first so stale embeddings/graph data cannot linger.
+    cleanup_qdrant_for_repository(repository_id, repository.full_name)
+    cleanup_graph_for_repository(repository_id, repository.full_name)
+
+    mark_repository_status(repository_id, status_value="reindexing")
+    remove_clone_directory(repository.clone_path)
+    ensure_clone_parent_directory(repository.clone_path)
+
+    try:
+        default_branch = clone_repository(repository)
+    except HTTPException as exc:
+        mark_repository_status(repository_id, status_value="failed")
+        raise exc
+    except Exception as exc:
+        mark_repository_status(repository_id, status_value="failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected repository re-index failure: {exc}",
+        ) from exc
+
+    updated = mark_repository_status(
+        repository_id,
+        status_value="cloned",
+        default_branch=default_branch,
+    )
+
+    # Placeholder for Day 5+ chunking/embeddings after a successful re-clone.
+    reembed_repository(repository_id, repository.full_name, str(repository.clone_path))
+    return updated
 
 
 def insert_repository_record(repository: ParsedRepository) -> dict:
@@ -185,7 +267,7 @@ def clone_repository(repository: ParsedRepository) -> str | None:
     ]
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
-        cleanup_failed_clone(repository.clone_path)
+        remove_clone_directory(repository.clone_path)
         stderr = completed.stderr.strip() or completed.stdout.strip() or "git clone failed"
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -195,16 +277,10 @@ def clone_repository(repository: ParsedRepository) -> str | None:
     return read_default_branch(repository.clone_path)
 
 
-def cleanup_failed_clone(clone_path: Path) -> None:
+def remove_clone_directory(clone_path: Path) -> None:
     if not clone_path.exists():
         return
-
-    for path in sorted(clone_path.rglob("*"), reverse=True):
-        if path.is_file() or path.is_symlink():
-            path.unlink(missing_ok=True)
-        elif path.is_dir():
-            path.rmdir()
-    clone_path.rmdir()
+    shutil.rmtree(clone_path)
 
 
 def read_default_branch(clone_path: Path) -> str | None:
