@@ -1,0 +1,1 @@
+"""GitSense AI backend package."""

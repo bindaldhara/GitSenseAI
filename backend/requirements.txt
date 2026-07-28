@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+psycopg[binary]
+redis
+qdrant-client
+celery
+httpx
