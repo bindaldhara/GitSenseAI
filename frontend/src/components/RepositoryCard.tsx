@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BarChart3, ChevronDown, MessageSquare } from 'lucide-react'
+import { BarChart3, ChevronDown, FolderGit2, MessageSquare } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import type { Repository } from '@/types/repository'
@@ -16,12 +16,12 @@ type RepositoryCardProps = {
 
 function statusClass(status: string) {
   if (status === 'cloned') {
-    return 'bg-emerald-500/15 text-emerald-100'
+    return 'bg-emerald-500/15 text-emerald-100 ring-1 ring-emerald-400/20'
   }
   if (status === 'failed') {
-    return 'bg-red-500/15 text-red-100'
+    return 'bg-red-500/15 text-red-100 ring-1 ring-red-400/20'
   }
-  return 'status-pulse bg-brand-600/20 text-brand-100'
+  return 'status-pulse bg-brand-600/20 text-brand-100 ring-1 ring-brand-400/20'
 }
 
 export function RepositoryCard({
@@ -36,13 +36,16 @@ export function RepositoryCard({
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10 bg-slate-950/40">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 transition hover:border-white/15">
       <button
         type="button"
         onClick={() => setIsExpanded((current) => !current)}
-        className="ui-button flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/5"
+        className="ui-button flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-white/5"
         aria-expanded={isExpanded}
       >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-slate-300">
+          <FolderGit2 className="h-4 w-4" />
+        </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-white">{repository.full_name}</p>
         </div>
@@ -59,7 +62,7 @@ export function RepositoryCard({
       </button>
 
       {isExpanded ? (
-        <div className="border-t border-white/10 px-4 py-3">
+        <div className="border-t border-white/10 bg-black/10 px-4 py-4">
           <a
             href={repository.url}
             target="_blank"
@@ -68,26 +71,26 @@ export function RepositoryCard({
           >
             {repository.url}
           </a>
-          <p className="mt-3 text-xs text-slate-400">
-            Clone path: <span className="font-mono">{repository.clone_path}</span>
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Default branch: {repository.default_branch ?? 'unknown'}
-          </p>
+          <div className="mt-3 space-y-1 rounded-lg bg-black/20 p-3 text-xs text-slate-400">
+            <p>
+              Clone path: <span className="font-mono text-slate-300">{repository.clone_path}</span>
+            </p>
+            <p>Default branch: {repository.default_branch ?? 'unknown'}</p>
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               disabled={repository.status !== 'cloned' || isBusy}
               onClick={() => onViewSummary(repository)}
-              className="ui-button inline-flex items-center gap-1.5 rounded-md border border-brand-400/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-100 hover:bg-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button inline-flex items-center gap-1.5 rounded-lg border border-brand-400/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-100 hover:bg-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <BarChart3 className="h-3.5 w-3.5" />
-              View parse summary
+              Parse summary
             </button>
             <Link
               to={`/chat?repository=${repository.id}`}
-              className={`ui-button inline-flex items-center gap-1.5 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-500/20 ${
+              className={`ui-button inline-flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-500/20 ${
                 repository.status !== 'cloned' || isBusy ? 'pointer-events-none opacity-60' : ''
               }`}
               aria-disabled={repository.status !== 'cloned' || isBusy}
@@ -100,7 +103,7 @@ export function RepositoryCard({
               type="button"
               disabled={isBusy}
               onClick={() => onReindex(repository.id)}
-              className="ui-button rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBusy && isReindexing ? 'Re-indexing...' : 'Re-index'}
             </button>
@@ -108,7 +111,7 @@ export function RepositoryCard({
               type="button"
               disabled={isBusy}
               onClick={() => onDelete(repository)}
-              className="ui-button rounded-md border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ui-button rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBusy && isDeleting ? 'Deleting...' : 'Delete'}
             </button>

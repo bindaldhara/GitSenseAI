@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, FileCode2 } from 'lucide-react'
 
 import type { RetrievedSource } from '@/types/chat'
@@ -15,6 +15,10 @@ function formatScore(score: number) {
 
 function sourceKey(source: RetrievedSource, index: number) {
   return `${source.file_path}-${source.start_line}-${index}`
+}
+
+function PanelShell({ children }: { children: ReactNode }) {
+  return <div className="glass-panel rounded-2xl p-5">{children}</div>
 }
 
 export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatSourcesPanelProps) {
@@ -38,39 +42,33 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
 
   if (isLoading) {
     return (
-      <div className="ui-card rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
-          Sources
-        </h3>
+      <PanelShell>
+        <h3 className="section-eyebrow mb-3">Sources</h3>
         <p className="text-sm text-slate-400">Retrieving new sources for your latest question…</p>
-      </div>
+      </PanelShell>
     )
   }
 
   if (sources.length === 0) {
     return (
-      <div className="ui-card rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
-          Sources
-        </h3>
+      <PanelShell>
+        <h3 className="section-eyebrow mb-3">Sources</h3>
         <p className="text-sm text-slate-500">
           Retrieved code chunks will appear here after you ask a question.
         </p>
-      </div>
+      </PanelShell>
     )
   }
 
   return (
-    <div className="ui-card rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-      <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-slate-400">
-        Sources
-      </h3>
+    <PanelShell>
+      <h3 className="section-eyebrow mb-3">Sources</h3>
       <p className="mb-4 text-xs text-slate-500">
         Code chunks retrieved from Qdrant to ground the answer.
       </p>
 
       {question ? (
-        <p className="mb-4 rounded-lg border border-white/10 bg-slate-950/40 px-3 py-2 text-xs text-slate-300">
+        <p className="mb-4 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-xs leading-relaxed text-slate-300">
           Sources for: <span className="font-medium text-white">&ldquo;{question}&rdquo;</span>
         </p>
       ) : null}
@@ -83,7 +81,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
           return (
             <div
               key={key}
-              className="overflow-hidden rounded-lg border border-white/10 bg-slate-950/50"
+              className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/50"
             >
               <button
                 type="button"
@@ -112,7 +110,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
                     {source.symbol_name ? ` · ${source.symbol_name}` : ''} · {source.language} ·{' '}
                     {source.chunk_kind}
                   </p>
-                  <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-black/30 p-2 font-mono text-xs leading-relaxed text-slate-300">
+                  <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-black/35 p-2 font-mono text-xs leading-relaxed text-slate-300">
                     {source.excerpt}
                   </pre>
                 </div>
@@ -121,6 +119,6 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
           )
         })}
       </div>
-    </div>
+    </PanelShell>
   )
 }

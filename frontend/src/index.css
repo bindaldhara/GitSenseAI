@@ -20,8 +20,33 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-sans);
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
   color: #e2e8f0;
+  background: #070b14;
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgb(79 70 229 / 0.22), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgb(139 92 246 / 0.12), transparent),
+    radial-gradient(ellipse 50% 30% at 0% 100%, rgb(59 130 246 / 0.08), transparent),
+    linear-gradient(180deg, #070b14 0%, #0c1222 45%, #070b14 100%);
+}
+
+.app-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
 }
 
 @theme inline {
@@ -271,10 +296,141 @@ body {
     background-color 0.22s ease;
 }
 
-.ui-card:hover {
+.ui-card-interactive:hover {
   transform: translateY(-3px);
   border-color: rgb(255 255 255 / 0.18);
   box-shadow: 0 16px 40px rgb(0 0 0 / 0.28);
+}
+
+.glass-panel {
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.06) 0%,
+    rgb(255 255 255 / 0.02) 100%
+  );
+  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 8px 32px rgb(0 0 0 / 0.2);
+}
+
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(165 180 252);
+}
+
+.section-eyebrow::before {
+  content: '';
+  width: 1.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(99 102 241), transparent);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #a5b4fc 0%, #c4b5fd 45%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 8px 24px rgb(79 70 229 / 0.35);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.04);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(2 6 23 / 0.65);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: white;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.input-field:focus {
+  border-color: rgb(129 140 248 / 0.65);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.18);
+}
+
+.chat-prose {
+  color: rgb(226 232 240);
+}
+
+.chat-prose p {
+  margin: 0 0 0.75rem;
+}
+
+.chat-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-prose code {
+  border-radius: 0.375rem;
+  background: rgb(0 0 0 / 0.35);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.8em;
+}
+
+.chat-prose pre {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.4);
+  padding: 0.75rem;
+}
+
+.nav-pill {
+  border-radius: 9999px;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(203 213 225);
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.nav-pill:hover {
+  background: rgb(255 255 255 / 0.06);
+  color: white;
+}
+
+.nav-pill-active {
+  background: rgb(99 102 241 / 0.18);
+  color: rgb(224 231 255);
+  box-shadow: inset 0 0 0 1px rgb(129 140 248 / 0.25);
 }
 
 .ui-button {
@@ -321,7 +477,7 @@ body {
     animation: none !important;
   }
 
-  .ui-card:hover,
+  .ui-card-interactive:hover,
   .ui-button:hover:not(:disabled),
   .ui-button:active:not(:disabled) {
     transform: none;

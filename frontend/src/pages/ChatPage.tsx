@@ -8,6 +8,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { sendChatMessage } from '@/api/chat'
 import { fetchRepositories } from '@/api/repositories'
 import { ChatSourcesPanel } from '@/components/ChatSourcesPanel'
+import { PageHeader } from '@/components/PageHeader'
 import type { ConversationTurn } from '@/types/chat'
 
 const EXAMPLE_QUESTIONS = [
@@ -163,20 +164,15 @@ export function ChatPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <section className="animate-fade-up mb-8">
-        <p className="mb-2 text-sm font-medium uppercase tracking-wider text-slate-400">
-          Repository chat
-        </p>
-        <h2 className="text-3xl font-bold tracking-tight text-white">Ask about your code</h2>
-        <p className="animate-fade-up animate-delay-1 mt-2 max-w-3xl text-slate-400">
-          Pick an indexed repository, ask a question in plain English, and GitSense will retrieve
-          relevant code chunks from Qdrant before generating an answer.
-        </p>
-      </section>
+    <main className="mx-auto max-w-6xl px-6 py-12">
+      <PageHeader
+        eyebrow="Repository chat"
+        title="Ask about your code"
+        description="Pick an indexed repository, ask a question in plain English, and GitSense retrieves relevant code chunks from Qdrant before generating an answer."
+      />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
-        <section className="ui-card animate-fade-up animate-delay-2 flex h-[640px] flex-col rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
+        <section className="glass-panel animate-fade-up animate-delay-2 flex h-[640px] flex-col overflow-hidden rounded-2xl">
           <div className="border-b border-white/10 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-white">
@@ -211,7 +207,7 @@ export function ChatPage() {
                   id="chat-repository"
                   value={selectedRepositoryId ?? ''}
                   onChange={(event) => handleRepositoryChange(Number(event.target.value))}
-                  className="ui-button w-full rounded-lg border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-brand-400 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.18)]"
+                  className="input-field ui-button"
                 >
                   {readyRepositories.map((repository) => (
                     <option key={repository.id} value={repository.id}>
@@ -237,10 +233,10 @@ export function ChatPage() {
             ) : null}
           </div>
 
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
             {turns.length === 0 ? (
-              <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600/20 text-brand-200">
+              <div className="flex flex-col items-center px-2 pt-8 pb-4 text-center">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500/30 to-violet-500/20 text-brand-100 ring-1 ring-brand-400/20">
                   <Bot className="h-7 w-7" />
                 </div>
                 <h4 className="text-lg font-semibold text-white">Start a conversation</h4>
@@ -266,7 +262,8 @@ export function ChatPage() {
                 ) : null}
               </div>
             ) : (
-              turns.map((turn, index) => {
+              <div className="space-y-4">
+                {turns.map((turn, index) => {
                 const previousTurn = index > 0 ? turns[index - 1] : null
                 const pairedQuestion =
                   turn.role === 'assistant' && previousTurn?.role === 'user'
@@ -286,16 +283,16 @@ export function ChatPage() {
                   ) : null}
 
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
                       turn.role === 'user'
-                        ? 'bg-brand-600 text-white'
+                        ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-brand-600/20'
                         : isSelectedSourceTurn
-                          ? 'border border-brand-400/40 bg-slate-950/80 text-slate-200'
-                          : 'border border-white/10 bg-slate-950/60 text-slate-200'
+                          ? 'border border-brand-400/40 bg-slate-950/90 text-slate-200 ring-1 ring-brand-400/20'
+                          : 'border border-white/10 bg-slate-950/70 text-slate-200'
                     }`}
                   >
                     {turn.role === 'assistant' ? (
-                      <div className="prose prose-invert prose-sm max-w-none">
+                      <div className="chat-prose prose prose-invert prose-sm max-w-none">
                         <ReactMarkdown>{turn.content}</ReactMarkdown>
                       </div>
                     ) : (
@@ -328,10 +325,11 @@ export function ChatPage() {
                   ) : null}
                 </div>
                 )
-              })
+              })}
+              </div>
             )}
 
-            {chatMutation.isPending ? (
+            {turns.length > 0 && chatMutation.isPending ? (
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Retrieving relevant code and generating an answer…
@@ -361,12 +359,12 @@ export function ChatPage() {
                     : 'Index a repository first to start chatting'
                 }
                 disabled={!selectedRepositoryId || chatMutation.isPending}
-                className="ui-button min-h-[52px] flex-1 resize-none rounded-lg border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-brand-400 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="input-field ui-button min-h-[52px] flex-1 resize-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 type="submit"
                 disabled={!selectedRepositoryId || !message.trim() || chatMutation.isPending}
-                className="ui-button inline-flex h-[52px] items-center justify-center rounded-lg bg-brand-600 px-4 text-white shadow-lg shadow-brand-600/20 hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary ui-button inline-flex h-[52px] w-[52px] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {chatMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -386,7 +384,7 @@ export function ChatPage() {
             isLoading={chatMutation.isPending}
           />
 
-          <div className="ui-card rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+          <div className="glass-panel rounded-2xl p-5">
             <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-400">
               How it works
             </h3>

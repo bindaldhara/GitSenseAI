@@ -9,6 +9,7 @@ import {
   submitRepository,
 } from '@/api/repositories'
 import { ParseSummaryModal } from '@/components/ParseSummaryModal'
+import { PageHeader } from '@/components/PageHeader'
 import { RepositoryCard } from '@/components/RepositoryCard'
 import type { Repository } from '@/types/repository'
 
@@ -103,21 +104,15 @@ export function RepositoriesPage() {
 
   return (
     <>
-      <main className="mx-auto max-w-5xl px-6 py-12">
-        <section className="animate-fade-up mb-8">
-          <p className="mb-2 text-sm font-medium uppercase tracking-wider text-slate-400">
-            Repository management
-          </p>
-          <h2 className="text-3xl font-bold tracking-tight text-white">Repositories</h2>
-          <p className="animate-fade-up animate-delay-1 mt-2 max-w-2xl text-slate-400">
-            Submit a public GitHub URL. The backend saves it in Postgres, clones it, and parses
-            supported source files. Use re-index to re-clone and re-parse, or delete to remove the
-            DB row and local clone.
-          </p>
-        </section>
+      <main className="mx-auto max-w-6xl px-6 py-12">
+        <PageHeader
+          eyebrow="Repository management"
+          title="Repositories"
+          description="Submit a public GitHub URL. GitSense clones it, parses supported files, chunks the code, and embeds it into Qdrant for chat and search."
+        />
 
-        <section className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="ui-card animate-fade-up animate-delay-2 rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+        <section className="grid items-start gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="glass-panel animate-fade-up animate-delay-2 rounded-2xl p-6">
             <h3 className="mb-2 text-lg font-semibold text-white">Submit a GitHub Repository</h3>
             <p className="mb-4 text-sm text-slate-400">
               Only public GitHub repositories are supported for now.
@@ -137,7 +132,7 @@ export function RepositoriesPage() {
                   value={repositoryUrl}
                   onChange={(event) => setRepositoryUrl(event.target.value)}
                   placeholder="https://github.com/owner/repository"
-                  className="ui-button w-full rounded-lg border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-brand-400 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.18)]"
+                  className="input-field ui-button"
                   required
                 />
               </div>
@@ -145,7 +140,7 @@ export function RepositoriesPage() {
               <button
                 type="submit"
                 disabled={repositoryMutation.isPending}
-                className="ui-button rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-600/20 hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary ui-button disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {repositoryMutation.isPending ? 'Cloning repository...' : 'Submit repository'}
               </button>
@@ -165,7 +160,7 @@ export function RepositoriesPage() {
             ) : null}
           </div>
 
-          <div className="ui-card animate-fade-up animate-delay-3 max-h-[calc(100vh-12rem)] rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+          <div className="glass-panel animate-fade-up animate-delay-3 max-h-[calc(100vh-12rem)] rounded-2xl p-6">
             <h3 className="mb-4 text-lg font-semibold text-white">Submitted Repositories</h3>
 
             {actionError ? (
