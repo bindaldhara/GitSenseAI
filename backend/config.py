@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     redis_url: str 
     qdrant_url: str
     repository_clone_dir: str
+    llm_provider: str = "ollama"
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
 
     @computed_field
     @property

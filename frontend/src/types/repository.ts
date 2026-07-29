@@ -27,3 +27,8 @@ export type RepositoryParseSummary = {
   skipped_returned: number
   skipped_limit: number
 }
+
+export type EmbeddingSummary = {
+  repository_id: number
+  vector_count: number
+}

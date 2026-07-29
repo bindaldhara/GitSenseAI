@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query, Response, status
 
 from parsers import get_repository_parse_summary, get_repository_symbols
 from schemas.repository import (
+    EmbeddingSummaryResponse,
     RepositoryCreate,
     RepositoryListResponse,
     RepositoryParseSummaryResponse,
@@ -14,6 +15,7 @@ from services.repository_service import (
     list_repositories,
     reindex_repository,
 )
+from vector_store import get_embedding_summary
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 
@@ -63,6 +65,15 @@ def read_repository_symbols(
 def remove_repository(repository_id: int) -> Response:
     delete_repository(repository_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{repository_id}/embedding-summary",
+    response_model=EmbeddingSummaryResponse,
+)
+def read_repository_embedding_summary(repository_id: int) -> EmbeddingSummaryResponse:
+    payload = get_embedding_summary(repository_id)
+    return EmbeddingSummaryResponse.model_validate(payload)
 
 
 @router.post(

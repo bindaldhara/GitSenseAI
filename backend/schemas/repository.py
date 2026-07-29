@@ -57,3 +57,8 @@ class RepositorySymbolsResponse(RepositoryParseSummaryResponse):
     symbols: list[SymbolResponse]
     symbols_returned: int
     symbols_limit: int
+
+
+class EmbeddingSummaryResponse(BaseModel):
+    repository_id: int
+    vector_count: int

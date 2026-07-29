@@ -1,20 +1,25 @@
 """Cascade cleanup and re-index hooks for downstream stores.
 
-Qdrant and Graph RAG are not wired yet. These functions are the extension
-points so delete/reindex can call real cleanup later without changing routes.
+These functions are called by delete/reindex flows in repository_service.py.
+Qdrant hooks are now live (Day 5). Graph RAG remains a stub.
 """
 
 from __future__ import annotations
 
 import logging
 
+from vector_store.ingest import embed_repository
+from vector_store.qdrant_store import delete_repository_points
+
 logger = logging.getLogger(__name__)
 
 
 def cleanup_qdrant_for_repository(repository_id: int, full_name: str) -> None:
-    """Remove vector points for a repository when Qdrant ingestion exists."""
+    """Remove all vector points for a repository from Qdrant."""
+    deleted = delete_repository_points(repository_id)
     logger.info(
-        "Qdrant cleanup hook skipped (not implemented yet) for repository_id=%s full_name=%s",
+        "Qdrant cleanup: deleted %s points for repository_id=%s full_name=%s",
+        deleted,
         repository_id,
         full_name,
     )
@@ -29,11 +34,11 @@ def cleanup_graph_for_repository(repository_id: int, full_name: str) -> None:
     )
 
 
-def reembed_repository(repository_id: int, full_name: str, clone_path: str) -> None:
-    """Re-run chunking/embeddings/Qdrant upsert when the indexing pipeline exists."""
+def reembed_repository(repository_id: int, full_name: str, clone_path: str) -> dict:
+    """Run the full chunking → embedding → Qdrant upsert pipeline."""
     logger.info(
-        "Re-embed hook skipped (not implemented yet) for repository_id=%s full_name=%s clone_path=%s",
+        "Starting embedding pipeline for repository_id=%s full_name=%s",
         repository_id,
         full_name,
-        clone_path,
     )
+    return embed_repository(repository_id, clone_path)

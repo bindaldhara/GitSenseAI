@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart3 } from 'lucide-react'
 
 import {
   deleteRepository,
@@ -10,6 +9,7 @@ import {
   submitRepository,
 } from '@/api/repositories'
 import { ParseSummaryModal } from '@/components/ParseSummaryModal'
+import { RepositoryCard } from '@/components/RepositoryCard'
 import type { Repository } from '@/types/repository'
 
 function RepositorySkeletonList() {
@@ -28,16 +28,6 @@ function RepositorySkeletonList() {
       ))}
     </div>
   )
-}
-
-function statusClass(status: string) {
-  if (status === 'cloned') {
-    return 'bg-emerald-500/15 text-emerald-100'
-  }
-  if (status === 'failed') {
-    return 'bg-red-500/15 text-red-100'
-  }
-  return 'status-pulse bg-brand-600/20 text-brand-100'
 }
 
 export function RepositoriesPage() {
@@ -126,7 +116,7 @@ export function RepositoriesPage() {
           </p>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="ui-card animate-fade-up animate-delay-2 rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
             <h3 className="mb-2 text-lg font-semibold text-white">Submit a GitHub Repository</h3>
             <p className="mb-4 text-sm text-slate-400">
@@ -175,7 +165,7 @@ export function RepositoriesPage() {
             ) : null}
           </div>
 
-          <div className="ui-card animate-fade-up animate-delay-3 rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+          <div className="ui-card animate-fade-up animate-delay-3 max-h-[calc(100vh-12rem)] rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
             <h3 className="mb-4 text-lg font-semibold text-white">Submitted Repositories</h3>
 
             {actionError ? (
@@ -189,7 +179,7 @@ export function RepositoriesPage() {
             ) : repositoriesError ? (
               <p className="text-sm text-red-300">Could not load repositories from the API.</p>
             ) : repositoriesData && repositoriesData.repositories.length > 0 ? (
-              <div className="space-y-3">
+              <div className="max-h-[calc(100vh-18rem)] space-y-2 overflow-y-auto pr-1">
                 {repositoriesData.repositories.map((repository, index) => {
                   const isBusy =
                     pendingActionId === repository.id &&
@@ -198,68 +188,25 @@ export function RepositoriesPage() {
                   return (
                     <div
                       key={repository.id}
-                      className="ui-card animate-fade-up rounded-lg border border-white/10 bg-slate-950/40 p-4"
+                      className="animate-fade-up"
                       style={{ animationDelay: `${0.08 * index}s` }}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-white">{repository.full_name}</p>
-                          <a
-                            href={repository.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm text-brand-200 transition hover:text-brand-100"
-                          >
-                            {repository.url}
-                          </a>
-                        </div>
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(repository.status)}`}
-                        >
-                          {repository.status}
-                        </span>
-                      </div>
-                      <p className="mt-3 text-xs text-slate-400">
-                        Clone path: <span className="font-mono">{repository.clone_path}</span>
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Default branch: {repository.default_branch ?? 'unknown'}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={repository.status !== 'cloned' || isBusy}
-                          onClick={() => setSummaryRepository(repository)}
-                          className="ui-button inline-flex items-center gap-1.5 rounded-md border border-brand-400/30 bg-brand-500/10 px-3 py-1.5 text-xs font-medium text-brand-100 hover:bg-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <BarChart3 className="h-3.5 w-3.5" />
-                          View parse summary
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => reindexMutation.mutate(repository.id)}
-                          className="ui-button rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {isBusy && reindexMutation.isPending ? 'Re-indexing...' : 'Re-index'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => {
-                            const confirmed = window.confirm(
-                              `Are you sure you want to delete ${repository.full_name}?`,
-                            )
-                            if (confirmed) {
-                              deleteMutation.mutate(repository.id)
-                            }
-                          }}
-                          className="ui-button rounded-md border border-red-500/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {isBusy && deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </div>
+                      <RepositoryCard
+                        repository={repository}
+                        isBusy={isBusy}
+                        isReindexing={reindexMutation.isPending}
+                        isDeleting={deleteMutation.isPending}
+                        onViewSummary={setSummaryRepository}
+                        onReindex={(repositoryId) => reindexMutation.mutate(repositoryId)}
+                        onDelete={(repo) => {
+                          const confirmed = window.confirm(
+                            `Are you sure you want to delete ${repo.full_name}?`,
+                          )
+                          if (confirmed) {
+                            deleteMutation.mutate(repo.id)
+                          }
+                        }}
+                      />
                     </div>
                   )
                 })}

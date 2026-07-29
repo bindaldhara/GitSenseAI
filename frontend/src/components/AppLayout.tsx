@@ -32,6 +32,9 @@ export function AppLayout() {
             <NavLink to="/repositories" className={navLinkClass}>
               Repositories
             </NavLink>
+            <NavLink to="/chat" className={navLinkClass}>
+              Chat
+            </NavLink>
           </nav>
         </div>
       </header>

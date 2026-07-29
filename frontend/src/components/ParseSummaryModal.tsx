@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, FileCode2, SkipForward, Sparkles, X } from 'lucide-react'
+import { BarChart3, Database, FileCode2, SkipForward, Sparkles, X } from 'lucide-react'
 
-import { fetchParseSummary } from '@/api/repositories'
+import { fetchEmbeddingSummary, fetchParseSummary } from '@/api/repositories'
 import type { Repository } from '@/types/repository'
 
 type ParseSummaryModalProps = {
@@ -107,6 +107,12 @@ export function ParseSummaryModal({ repository, open, onClose }: ParseSummaryMod
   } = useQuery({
     queryKey: ['parse-summary', repository.id, 'modal'],
     queryFn: () => fetchParseSummary(repository.id, 100),
+    enabled: open && repository.status === 'cloned',
+  })
+
+  const { data: embeddingSummary } = useQuery({
+    queryKey: ['embedding-summary', repository.id],
+    queryFn: () => fetchEmbeddingSummary(repository.id),
     enabled: open && repository.status === 'cloned',
   })
 
@@ -220,10 +226,24 @@ export function ParseSummaryModal({ repository, open, onClose }: ParseSummaryMod
             </div>
           ) : (
             <div className="space-y-5">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <CountBadge label="Parsed files" value={summary.file_count} delay="0.04s" />
                 <CountBadge label="Symbols" value={summary.symbol_count} delay="0.08s" />
                 <CountBadge label="Skipped files" value={summary.skipped_count} delay="0.12s" />
+                <div
+                  className="animate-fade-up ui-card rounded-xl border border-white/10 bg-slate-950/60 p-4"
+                  style={{ animationDelay: '0.16s' }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Database className="h-3.5 w-3.5 text-brand-300" />
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      Vectors
+                    </p>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {embeddingSummary ? embeddingSummary.vector_count.toLocaleString() : '—'}
+                  </p>
+                </div>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">

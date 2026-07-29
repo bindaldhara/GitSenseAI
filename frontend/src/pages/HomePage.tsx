@@ -33,12 +33,18 @@ export function HomePage() {
           Index, search, and reason over large-scale repositories using Multi-Agent RAG,
           Graph RAG, and intelligent code discovery.
         </p>
-        <div className="animate-fade-up animate-delay-2 mt-8">
+        <div className="animate-fade-up animate-delay-2 mt-8 flex flex-wrap justify-center gap-3">
           <Link
             to="/repositories"
             className="ui-button inline-flex rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 hover:bg-brand-500"
           >
             Open repository dashboard
+          </Link>
+          <Link
+            to="/chat"
+            className="ui-button inline-flex rounded-lg border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            Try repository chat
           </Link>
         </div>
       </section>

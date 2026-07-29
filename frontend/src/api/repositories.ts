@@ -1,4 +1,4 @@
-import type { Repository, RepositoryParseSummary } from '@/types/repository'
+import type { EmbeddingSummary, Repository, RepositoryParseSummary } from '@/types/repository'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 
 export async function fetchRepositories() {
@@ -51,5 +51,16 @@ export async function fetchParseSummary(repositoryId: number, skippedLimit = 20)
     return data
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Failed to load parse summary'))
+  }
+}
+
+export async function fetchEmbeddingSummary(repositoryId: number) {
+  try {
+    const { data } = await apiClient.get<EmbeddingSummary>(
+      `/api/v1/repositories/${repositoryId}/embedding-summary`,
+    )
+    return data
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Failed to load embedding summary'))
   }
 }

@@ -125,11 +125,15 @@ def create_repository_submission(raw_url: str) -> dict:
             detail=f"Unexpected repository cloning failure: {exc}",
         ) from exc
 
-    return _parse_and_finalize(
+    result = _parse_and_finalize(
         created_record["id"],
         repository.clone_path,
         default_branch=default_branch,
     )
+
+    # Embed after initial clone + parse.
+    reembed_repository(created_record["id"], repository.full_name, str(repository.clone_path))
+    return result
 
 
 def delete_repository(repository_id: int) -> None:
