@@ -28,6 +28,7 @@ export type ChatResponse = {
   sources: RetrievedSource[]
   model: string
   retrieval_mode: 'hybrid' | 'vector'
+  reranked: boolean
 }
 
 export type ConversationTurn = {
@@ -37,4 +38,5 @@ export type ConversationTurn = {
   sources?: RetrievedSource[]
   model?: string
   retrievalMode?: 'hybrid' | 'vector'
+  reranked?: boolean
 }

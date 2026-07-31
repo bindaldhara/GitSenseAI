@@ -15,5 +15,6 @@ def repository_chat(repository_id: int, payload: ChatRequest) -> ChatResponse:
         top_k=payload.top_k,
         history=history,
         use_hybrid=payload.use_hybrid,
+        use_rerank=payload.use_rerank,
     )
     return ChatResponse.model_validate(result)

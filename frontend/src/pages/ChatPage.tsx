@@ -102,6 +102,7 @@ export function ChatPage() {
         sources: response.sources,
         model: response.model,
         retrievalMode: response.retrieval_mode,
+        reranked: response.reranked,
       }
       setTurns((current) => [...current, assistantTurn])
       setActiveSources(response.sources)
@@ -305,6 +306,7 @@ export function ChatPage() {
                         <p>
                           Model: {turn.model}
                           {turn.retrievalMode ? ` · ${turn.retrievalMode} search` : ''}
+                          {turn.reranked ? ' · cross-encoder reranked' : ''}
                           {turn.sources?.length ? ` · ${turn.sources.length} sources` : ''}
                         </p>
                         {turn.sources?.length && pairedQuestion ? (
@@ -394,7 +396,8 @@ export function ChatPage() {
               <li>1. Your question is embedded with Sentence Transformers.</li>
               <li>2. Qdrant (semantic) + BM25 (keyword) retrieve candidate chunks.</li>
               <li>3. Reciprocal Rank Fusion merges both ranked lists.</li>
-              <li>4. Top chunks are sent to the LLM; answer + sources are shown.</li>
+              <li>4. A cross-encoder reranks candidates for sharper relevance.</li>
+              <li>5. Top chunks are sent to the LLM; answer + sources are shown.</li>
             </ol>
           </div>
         </aside>

@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     hybrid_search_enabled: bool = True
     hybrid_rrf_k: int = 60
     hybrid_candidate_multiplier: int = 4
+    rerank_enabled: bool = True
+    rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     @computed_field
     @property
