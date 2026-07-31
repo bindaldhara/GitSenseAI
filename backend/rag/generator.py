@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from openai import OpenAI
 
 from config import settings
-from rag.prompts import SYSTEM_PROMPT, build_user_prompt
+from rag.prompts import build_chat_messages
 from rag.retriever import format_chunk_for_prompt
 from vector_store.qdrant_store import RetrievedChunk
 
@@ -34,14 +34,11 @@ def _generate_with_openai(
         )
 
     client = OpenAI(api_key=settings.openai_api_key)
-    messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-    for item in history:
-        messages.append({"role": item["role"], "content": item["content"]})
-    messages.append(
-        {
-            "role": "user",
-            "content": build_user_prompt(question, repository_full_name, context_blocks),
-        }
+    messages = build_chat_messages(
+        question=question,
+        repository_full_name=repository_full_name,
+        context_blocks=context_blocks,
+        history=history,
     )
 
     response = client.chat.completions.create(
@@ -65,14 +62,11 @@ def _generate_with_ollama(
     context_blocks: list[str],
     history: list[dict[str, str]],
 ) -> str:
-    messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-    for item in history:
-        messages.append({"role": item["role"], "content": item["content"]})
-    messages.append(
-        {
-            "role": "user",
-            "content": build_user_prompt(question, repository_full_name, context_blocks),
-        }
+    messages = build_chat_messages(
+        question=question,
+        repository_full_name=repository_full_name,
+        context_blocks=context_blocks,
+        history=history,
     )
 
     payload = {
