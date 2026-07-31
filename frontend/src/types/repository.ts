@@ -31,4 +31,6 @@ export type RepositoryParseSummary = {
 export type EmbeddingSummary = {
   repository_id: number
   vector_count: number
+  bm25_chunk_count: number
+  hybrid_ready: boolean
 }

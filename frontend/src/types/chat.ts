@@ -27,6 +27,7 @@ export type ChatResponse = {
   answer: string
   sources: RetrievedSource[]
   model: string
+  retrieval_mode: 'hybrid' | 'vector'
 }
 
 export type ConversationTurn = {
@@ -35,4 +36,5 @@ export type ConversationTurn = {
   content: string
   sources?: RetrievedSource[]
   model?: string
+  retrievalMode?: 'hybrid' | 'vector'
 }

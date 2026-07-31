@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 
+from rag.bm25_store import delete_bm25_index
 from vector_store.ingest import embed_repository
 from vector_store.qdrant_store import delete_repository_points
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 def cleanup_qdrant_for_repository(repository_id: int, full_name: str) -> None:
     """Remove all vector points for a repository from Qdrant."""
     deleted = delete_repository_points(repository_id)
+    delete_bm25_index(repository_id)
     logger.info(
         "Qdrant cleanup: deleted %s points for repository_id=%s full_name=%s",
         deleted,

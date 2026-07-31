@@ -10,7 +10,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Install CPU-only PyTorch first — sentence-transformers depends on torch and the
+# default wheel can end up with an invalid/cross-arch binary in slim images.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY backend /app
 

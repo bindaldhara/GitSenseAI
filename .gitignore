@@ -15,6 +15,10 @@ backend/data/repos/
 backend/app/data/repos/
 **/data/repos/
 
+# BM25 hybrid search indexes (generated at ingest)
+backend/data/bm25_indices/*
+!backend/data/bm25_indices/.gitkeep
+
 .pytest_cache/
 .mypy_cache/
 **/.pytest_cache/

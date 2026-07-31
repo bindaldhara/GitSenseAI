@@ -101,6 +101,7 @@ export function ChatPage() {
         content: response.answer,
         sources: response.sources,
         model: response.model,
+        retrievalMode: response.retrieval_mode,
       }
       setTurns((current) => [...current, assistantTurn])
       setActiveSources(response.sources)
@@ -303,6 +304,7 @@ export function ChatPage() {
                       <div className="mt-3 border-t border-white/10 pt-2 text-xs text-slate-500">
                         <p>
                           Model: {turn.model}
+                          {turn.retrievalMode ? ` · ${turn.retrievalMode} search` : ''}
                           {turn.sources?.length ? ` · ${turn.sources.length} sources` : ''}
                         </p>
                         {turn.sources?.length && pairedQuestion ? (
@@ -390,9 +392,9 @@ export function ChatPage() {
             </h3>
             <ol className="space-y-2 text-sm text-slate-400">
               <li>1. Your question is embedded with Sentence Transformers.</li>
-              <li>2. Qdrant finds the closest code chunks for this repo.</li>
-              <li>3. Those chunks are sent to the LLM as context.</li>
-              <li>4. The answer and source citations are shown here.</li>
+              <li>2. Qdrant (semantic) + BM25 (keyword) retrieve candidate chunks.</li>
+              <li>3. Reciprocal Rank Fusion merges both ranked lists.</li>
+              <li>4. Top chunks are sent to the LLM; answer + sources are shown.</li>
             </ol>
           </div>
         </aside>

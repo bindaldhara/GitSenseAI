@@ -43,8 +43,11 @@ def embed_repository(repository_id: int, clone_path: str | Path) -> dict:
     """
     ensure_collection()
 
+    from rag.bm25_store import build_bm25_index, delete_bm25_index
+
     # Clear stale vectors first (idempotent if none exist).
     deleted = delete_repository_points(repository_id)
+    delete_bm25_index(repository_id)
     if deleted:
         logger.info("Cleared %s stale points before re-embedding repository_id=%s.", deleted, repository_id)
 
@@ -52,7 +55,9 @@ def embed_repository(repository_id: int, clone_path: str | Path) -> dict:
     chunk_result = chunk_repository(repository_id, clone_path)
     if not chunk_result.chunks:
         logger.info("No chunks produced for repository_id=%s — nothing to embed.", repository_id)
-        return _summary(repository_id, chunk_result, vectors_stored=0)
+        return _summary(repository_id, chunk_result, vectors_stored=0, bm25_chunks=0)
+
+    bm25_chunks = build_bm25_index(repository_id, chunk_result.chunks)
 
     # 2. Embed in batches
     all_texts = [c.text for c in chunk_result.chunks]
@@ -86,19 +91,23 @@ def embed_repository(repository_id: int, clone_path: str | Path) -> dict:
         len(chunk_result.chunks),
         vectors_stored,
     )
-    return _summary(repository_id, chunk_result, vectors_stored=vectors_stored)
+    return _summary(repository_id, chunk_result, vectors_stored=vectors_stored, bm25_chunks=bm25_chunks)
 
 
 def get_embedding_summary(repository_id: int) -> dict:
-    """Return embedding stats for a repository (no chunking, just Qdrant count)."""
+    """Return embedding stats for a repository (Qdrant + BM25 counts)."""
+    from rag.bm25_store import count_bm25_chunks
+
     vector_count = count_repository_points(repository_id)
     return {
         "repository_id": repository_id,
         "vector_count": vector_count,
+        "bm25_chunk_count": count_bm25_chunks(repository_id),
+        "hybrid_ready": vector_count > 0 and count_bm25_chunks(repository_id) > 0,
     }
 
 
-def _summary(repository_id: int, chunk_result, *, vectors_stored: int) -> dict:
+def _summary(repository_id: int, chunk_result, *, vectors_stored: int, bm25_chunks: int) -> dict:
     return {
         "repository_id": repository_id,
         "files_chunked": chunk_result.files_chunked,
@@ -106,4 +115,5 @@ def _summary(repository_id: int, chunk_result, *, vectors_stored: int) -> dict:
         "window_chunks": chunk_result.window_chunk_count,
         "total_chunks": len(chunk_result.chunks),
         "vectors_stored": vectors_stored,
+        "bm25_chunks": bm25_chunks,
     }

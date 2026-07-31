@@ -13,3 +13,8 @@ tree-sitter-typescript
 tree-sitter-go
 sentence-transformers
 openai
+langchain
+langchain-classic
+langchain-community
+langchain-core
+rank-bm25

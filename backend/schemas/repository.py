@@ -62,3 +62,5 @@ class RepositorySymbolsResponse(RepositoryParseSummaryResponse):
 class EmbeddingSummaryResponse(BaseModel):
     repository_id: int
     vector_count: int
+    bm25_chunk_count: int = 0
+    hybrid_ready: bool = False

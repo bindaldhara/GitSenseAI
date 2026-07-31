@@ -4,6 +4,7 @@ from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+BACKEND_ROOT = Path(__file__).resolve().parent
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
@@ -25,6 +26,18 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
+    bm25_index_dir: str = "data/bm25_indices"
+    hybrid_search_enabled: bool = True
+    hybrid_rrf_k: int = 60
+    hybrid_candidate_multiplier: int = 4
+
+    @computed_field
+    @property
+    def bm25_index_path(self) -> Path:
+        path = Path(self.bm25_index_dir)
+        if path.is_absolute():
+            return path.resolve()
+        return (BACKEND_ROOT / path).resolve()
 
     @computed_field
     @property

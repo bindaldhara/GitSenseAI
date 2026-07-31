@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from vector_store.embeddings import embed_texts
-from vector_store.qdrant_store import RetrievedChunk, search_repository_chunks
+from rag.langchain_hybrid import RetrievalMode, retrieve_repository_context
+from vector_store.qdrant_store import RetrievedChunk
+
+__all__ = ["RetrievalMode", "format_chunk_for_prompt", "retrieve_repository_context"]
 
 
 def format_chunk_for_prompt(chunk: RetrievedChunk) -> str:
@@ -12,18 +14,3 @@ def format_chunk_for_prompt(chunk: RetrievedChunk) -> str:
     symbol = f" ({chunk.symbol_name})" if chunk.symbol_name else ""
     header = f"[{chunk.language} | {chunk.chunk_kind}{symbol} | {location}]"
     return f"{header}\n{chunk.text}"
-
-
-def retrieve_repository_context(
-    repository_id: int,
-    question: str,
-    *,
-    top_k: int = 5,
-) -> list[RetrievedChunk]:
-    """Embed the question and return the most similar indexed chunks."""
-    query_vector = embed_texts([question])[0]
-    return search_repository_chunks(
-        repository_id,
-        query_vector,
-        top_k=top_k,
-    )
