@@ -15,10 +15,6 @@ class ChatRequest(BaseModel):
         default=None,
         description="Use BM25 + vector hybrid search. Defaults to server HYBRID_SEARCH_ENABLED setting.",
     )
-    use_rerank: bool | None = Field(
-        default=None,
-        description="Rerank retrieved chunks with a cross-encoder. Defaults to server RERANK_ENABLED setting.",
-    )
     history: list[ChatMessage] = Field(
         default_factory=list,
         max_length=20,
@@ -43,4 +39,3 @@ class ChatResponse(BaseModel):
     sources: list[RetrievedSource]
     model: str
     retrieval_mode: Literal["hybrid", "vector"]
-    reranked: bool = False

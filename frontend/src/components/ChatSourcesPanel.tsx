@@ -2,15 +2,12 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, FileCode2 } from 'lucide-react'
 
 import type { RetrievedSource } from '@/types/chat'
+import { formatSourceScoresForDisplay, scoreDisplayFootnote } from '@/lib/retrievalScores'
 
 type ChatSourcesPanelProps = {
   sources: RetrievedSource[]
   question?: string
   isLoading?: boolean
-}
-
-function formatScore(score: number) {
-  return `${Math.round(score * 100)}%`
 }
 
 function sourceKey(source: RetrievedSource, index: number) {
@@ -60,11 +57,13 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
     )
   }
 
+  const scoreLabels = formatSourceScoresForDisplay(sources)
+
   return (
     <PanelShell>
       <h3 className="section-eyebrow mb-3">Sources</h3>
       <p className="mb-4 text-xs text-slate-500">
-        Code chunks retrieved from Qdrant to ground the answer.
+        Code chunks retrieved to ground the answer.
       </p>
 
       {question ? (
@@ -94,7 +93,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
                   {source.file_path}
                 </span>
                 <span className="shrink-0 rounded-full bg-brand-600/20 px-2 py-0.5 text-xs font-medium text-brand-100">
-                  {formatScore(source.score)}
+                  {scoreLabels[index]?.label ?? '—'}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
@@ -119,6 +118,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
           )
         })}
       </div>
+      <p className="mt-3 text-xs leading-relaxed text-slate-500">{scoreDisplayFootnote(sources)}</p>
     </PanelShell>
   )
 }

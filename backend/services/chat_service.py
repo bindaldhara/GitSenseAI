@@ -32,7 +32,6 @@ def chat_with_repository(
     top_k: int = 5,
     history: list[dict[str, str]] | None = None,
     use_hybrid: bool | None = None,
-    use_rerank: bool | None = None,
 ) -> dict:
     """Answer a question about an indexed repository using RAG."""
     repository = get_repository_by_id(repository_id)
@@ -53,12 +52,11 @@ def chat_with_repository(
             detail="Repository has no indexed vectors. Reindex the repository before chatting.",
         )
 
-    chunks, retrieval_mode, reranked = retrieve_repository_context(
+    chunks, retrieval_mode, _reranked = retrieve_repository_context(
         repository_id,
         message,
         top_k=top_k,
         use_hybrid=use_hybrid,
-        use_rerank=use_rerank,
     )
     answer, model = generate_repository_answer(
         question=message,
@@ -73,5 +71,4 @@ def chat_with_repository(
         "sources": [_to_source(chunk) for chunk in chunks],
         "model": model,
         "retrieval_mode": retrieval_mode,
-        "reranked": reranked,
     }

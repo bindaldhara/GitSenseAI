@@ -102,7 +102,6 @@ export function ChatPage() {
         sources: response.sources,
         model: response.model,
         retrievalMode: response.retrieval_mode,
-        reranked: response.reranked,
       }
       setTurns((current) => [...current, assistantTurn])
       setActiveSources(response.sources)
@@ -306,7 +305,6 @@ export function ChatPage() {
                         <p>
                           Model: {turn.model}
                           {turn.retrievalMode ? ` · ${turn.retrievalMode} search` : ''}
-                          {turn.reranked ? ' · cross-encoder reranked' : ''}
                           {turn.sources?.length ? ` · ${turn.sources.length} sources` : ''}
                         </p>
                         {turn.sources?.length && pairedQuestion ? (
@@ -317,6 +315,14 @@ export function ChatPage() {
                           >
                             View sources
                           </button>
+                        ) : null}
+                        {pairedQuestion && selectedRepositoryId ? (
+                          <Link
+                            to={`/admin/retrieval-lab?repository=${selectedRepositoryId}&question=${encodeURIComponent(pairedQuestion)}`}
+                            className="ui-button mt-1 block font-medium text-violet-200 hover:text-violet-100"
+                          >
+                            Compare retrieval modes →
+                          </Link>
                         ) : null}
                       </div>
                     ) : null}
