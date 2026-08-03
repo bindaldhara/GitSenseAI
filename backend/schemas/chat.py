@@ -20,6 +20,10 @@ class ChatRequest(BaseModel):
         max_length=20,
         description="Optional prior turns for multi-turn chat (client-managed for now)",
     )
+    use_semantic_cache: bool | None = Field(
+        default=None,
+        description="Use Redis semantic cache for single-turn questions. Defaults to server SEMANTIC_CACHE_ENABLED.",
+    )
 
 
 class RetrievedSource(BaseModel):
@@ -39,3 +43,5 @@ class ChatResponse(BaseModel):
     sources: list[RetrievedSource]
     model: str
     retrieval_mode: Literal["hybrid", "vector"]
+    cache_hit: bool = False
+    cache_similarity: float | None = None

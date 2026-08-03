@@ -28,6 +28,8 @@ export type ChatResponse = {
   sources: RetrievedSource[]
   model: string
   retrieval_mode: 'hybrid' | 'vector'
+  cache_hit?: boolean
+  cache_similarity?: number | null
 }
 
 export type ConversationTurn = {
@@ -37,4 +39,6 @@ export type ConversationTurn = {
   sources?: RetrievedSource[]
   model?: string
   retrievalMode?: 'hybrid' | 'vector'
+  cacheHit?: boolean
+  cacheSimilarity?: number | null
 }

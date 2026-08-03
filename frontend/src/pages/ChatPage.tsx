@@ -30,6 +30,7 @@ export function ChatPage() {
   const [activeSources, setActiveSources] = useState<ConversationTurn['sources']>([])
   const [activeSourcesQuestion, setActiveSourcesQuestion] = useState<string>()
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
+  const [sourcesHighlightPulse, setSourcesHighlightPulse] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { data: repositoriesData, isLoading: repositoriesLoading } = useQuery({
@@ -102,6 +103,8 @@ export function ChatPage() {
         sources: response.sources,
         model: response.model,
         retrievalMode: response.retrieval_mode,
+        cacheHit: response.cache_hit,
+        cacheSimilarity: response.cache_similarity,
       }
       setTurns((current) => [...current, assistantTurn])
       setActiveSources(response.sources)
@@ -146,6 +149,7 @@ export function ChatPage() {
     setActiveSources(turn.sources)
     setActiveSourcesQuestion(question)
     setSelectedTurnId(turn.id)
+    setSourcesHighlightPulse((current) => current + 1)
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -306,6 +310,15 @@ export function ChatPage() {
                           Model: {turn.model}
                           {turn.retrievalMode ? ` · ${turn.retrievalMode} search` : ''}
                           {turn.sources?.length ? ` · ${turn.sources.length} sources` : ''}
+                          {turn.cacheHit ? (
+                            <span className="text-emerald-300">
+                              {' '}
+                              · cached
+                              {turn.cacheSimilarity != null
+                                ? ` (${(turn.cacheSimilarity * 100).toFixed(0)}% similar)`
+                                : ''}
+                            </span>
+                          ) : null}
                         </p>
                         {turn.sources?.length && pairedQuestion ? (
                           <button
@@ -315,14 +328,6 @@ export function ChatPage() {
                           >
                             View sources
                           </button>
-                        ) : null}
-                        {pairedQuestion && selectedRepositoryId ? (
-                          <Link
-                            to={`/admin/retrieval-lab?repository=${selectedRepositoryId}&question=${encodeURIComponent(pairedQuestion)}`}
-                            className="ui-button mt-1 block font-medium text-violet-200 hover:text-violet-100"
-                          >
-                            Compare retrieval modes →
-                          </Link>
                         ) : null}
                       </div>
                     ) : null}
@@ -392,6 +397,7 @@ export function ChatPage() {
             sources={activeSources ?? []}
             question={activeSourcesQuestion}
             isLoading={chatMutation.isPending}
+            highlightPulse={sourcesHighlightPulse}
           />
 
           <div className="glass-panel rounded-2xl p-5">
@@ -404,6 +410,7 @@ export function ChatPage() {
               <li>3. Reciprocal Rank Fusion merges both ranked lists.</li>
               <li>4. A cross-encoder reranks candidates for sharper relevance.</li>
               <li>5. Top chunks are sent to the LLM; answer + sources are shown.</li>
+              <li>6. Similar questions (same repo) may return a cached answer — skips retrieval and the LLM.</li>
             </ol>
           </div>
         </aside>

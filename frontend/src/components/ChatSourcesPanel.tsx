@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ChevronDown, FileCode2 } from 'lucide-react'
 
 import type { RetrievedSource } from '@/types/chat'
@@ -8,22 +8,60 @@ type ChatSourcesPanelProps = {
   sources: RetrievedSource[]
   question?: string
   isLoading?: boolean
+  highlightPulse?: number
 }
 
 function sourceKey(source: RetrievedSource, index: number) {
   return `${source.file_path}-${source.start_line}-${index}`
 }
 
-function PanelShell({ children }: { children: ReactNode }) {
-  return <div className="glass-panel rounded-2xl p-5">{children}</div>
+function PanelShell({
+  children,
+  highlighted = false,
+  panelRef,
+}: {
+  children: ReactNode
+  highlighted?: boolean
+  panelRef?: RefObject<HTMLDivElement | null>
+}) {
+  return (
+    <div
+      ref={panelRef}
+      className={[
+        'glass-panel rounded-2xl p-5',
+        highlighted ? 'animate-highlight-bump ring-2 ring-brand-400/40' : '',
+      ].join(' ')}
+    >
+      {children}
+    </div>
+  )
 }
 
-export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatSourcesPanelProps) {
+export function ChatSourcesPanel({
+  sources,
+  question,
+  isLoading = false,
+  highlightPulse = 0,
+}: ChatSourcesPanelProps) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+  const [highlighted, setHighlighted] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setExpandedKeys(new Set())
   }, [sources])
+
+  useEffect(() => {
+    if (!highlightPulse) {
+      return
+    }
+
+    setHighlighted(true)
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+
+    const timer = window.setTimeout(() => setHighlighted(false), 600)
+    return () => window.clearTimeout(timer)
+  }, [highlightPulse])
 
   function toggleSource(key: string) {
     setExpandedKeys((current) => {
@@ -39,7 +77,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
 
   if (isLoading) {
     return (
-      <PanelShell>
+      <PanelShell panelRef={panelRef} highlighted={highlighted}>
         <h3 className="section-eyebrow mb-3">Sources</h3>
         <p className="text-sm text-slate-400">Retrieving new sources for your latest question…</p>
       </PanelShell>
@@ -48,7 +86,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
 
   if (sources.length === 0) {
     return (
-      <PanelShell>
+      <PanelShell panelRef={panelRef} highlighted={highlighted}>
         <h3 className="section-eyebrow mb-3">Sources</h3>
         <p className="text-sm text-slate-500">
           Retrieved code chunks will appear here after you ask a question.
@@ -60,7 +98,7 @@ export function ChatSourcesPanel({ sources, question, isLoading = false }: ChatS
   const scoreLabels = formatSourceScoresForDisplay(sources)
 
   return (
-    <PanelShell>
+    <PanelShell panelRef={panelRef} highlighted={highlighted}>
       <h3 className="section-eyebrow mb-3">Sources</h3>
       <p className="mb-4 text-xs text-slate-500">
         Code chunks retrieved to ground the answer.

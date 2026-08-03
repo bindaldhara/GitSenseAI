@@ -1,4 +1,4 @@
-import { Activity, ArrowLeft, FlaskConical, LayoutDashboard } from 'lucide-react'
+import { Activity, ArrowLeft, Database, FlaskConical, LayoutDashboard } from 'lucide-react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
 const adminNavClass = ({ isActive }: { isActive: boolean }) =>
@@ -43,6 +43,10 @@ export function AdminLayout() {
             <NavLink to="/admin/retrieval-lab" className={adminNavClass}>
               <FlaskConical className="h-4 w-4" />
               Retrieval lab
+            </NavLink>
+            <NavLink to="/admin/cache" className={adminNavClass}>
+              <Database className="h-4 w-4" />
+              Cache analytics
             </NavLink>
           </nav>
         </aside>

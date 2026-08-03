@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { AppLayout } from '@/components/AppLayout'
+import { CacheAnalyticsPage } from '@/pages/admin/CacheAnalyticsPage'
 import { OpsDashboardPage } from '@/pages/admin/OpsDashboardPage'
 import { RetrievalLabPage } from '@/pages/admin/RetrievalLabPage'
 import { ChatPage } from '@/pages/ChatPage'
@@ -23,6 +24,7 @@ function App() {
           <Route index element={<Navigate to="/admin/ops" replace />} />
           <Route path="ops" element={<OpsDashboardPage />} />
           <Route path="retrieval-lab" element={<RetrievalLabPage />} />
+          <Route path="cache" element={<CacheAnalyticsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

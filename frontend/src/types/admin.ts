@@ -37,3 +37,31 @@ export type OpsDashboardResponse = {
   config: PlatformConfig
   repositories: RepositoryOpsRow[]
 }
+
+export type CacheEvent = {
+  type: 'hit' | 'miss' | 'store'
+  repository_id: number
+  question: string
+  similarity: number | null
+  timestamp: string
+}
+
+export type CacheAnalyticsResponse = {
+  enabled: boolean
+  similarity_threshold: number
+  ttl_seconds: number
+  max_entries_per_repo: number
+  hits: number
+  misses: number
+  stores: number
+  entries: number
+  lookups: number
+  hit_rate_percent: number
+  recent_events: CacheEvent[]
+  error?: string | null
+}
+
+export type CacheClearResponse = {
+  removed_keys: number
+  message: string
+}

@@ -1,1 +1,1 @@
-"""Caching modules."""
+"""Semantic cache package."""

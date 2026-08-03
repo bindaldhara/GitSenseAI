@@ -39,3 +39,31 @@ class OpsDashboardResponse(BaseModel):
     totals: PlatformTotals
     config: PlatformConfig
     repositories: list[RepositoryOpsRow]
+
+
+class CacheEvent(BaseModel):
+    type: str
+    repository_id: int
+    question: str
+    similarity: float | None = None
+    timestamp: str
+
+
+class CacheAnalyticsResponse(BaseModel):
+    enabled: bool
+    similarity_threshold: float
+    ttl_seconds: int
+    max_entries_per_repo: int
+    hits: int
+    misses: int
+    stores: int
+    entries: int
+    lookups: int
+    hit_rate_percent: float
+    recent_events: list[CacheEvent]
+    error: str | None = None
+
+
+class CacheClearResponse(BaseModel):
+    removed_keys: int
+    message: str

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     hybrid_candidate_multiplier: int = 4
     rerank_enabled: bool = True
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    semantic_cache_enabled: bool = True
+    semantic_cache_similarity_threshold: float = 0.85
+    semantic_cache_ttl_seconds: int = 86_400
+    semantic_cache_max_entries_per_repo: int = 100
 
     @computed_field
     @property

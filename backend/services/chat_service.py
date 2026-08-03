@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
+from cache.semantic_cache import lookup_cached_chat, store_cached_chat
+from config import settings
 from rag.generator import generate_repository_answer
 from rag.retriever import retrieve_repository_context
 from services.repository_service import get_repository_by_id
 from vector_store import get_embedding_summary
+from vector_store.embeddings import embed_texts
 from vector_store.qdrant_store import RetrievedChunk
 
 
@@ -32,6 +35,7 @@ def chat_with_repository(
     top_k: int = 5,
     history: list[dict[str, str]] | None = None,
     use_hybrid: bool | None = None,
+    use_semantic_cache: bool | None = None,
 ) -> dict:
     """Answer a question about an indexed repository using RAG."""
     repository = get_repository_by_id(repository_id)
@@ -52,6 +56,26 @@ def chat_with_repository(
             detail="Repository has no indexed vectors. Reindex the repository before chatting.",
         )
 
+    history = history or []
+    cache_enabled = settings.semantic_cache_enabled if use_semantic_cache is None else use_semantic_cache
+    can_lookup_cache = cache_enabled
+    can_store_cache = cache_enabled
+
+    question_embedding: list[float] | None = None
+    if can_lookup_cache:
+        question_embedding = embed_texts([message])[0]
+        cached = lookup_cached_chat(repository_id, message, question_embedding=question_embedding)
+        if cached is not None:
+            return {
+                "repository_id": repository_id,
+                "answer": cached.answer,
+                "sources": cached.sources,
+                "model": cached.model,
+                "retrieval_mode": cached.retrieval_mode,
+                "cache_hit": True,
+                "cache_similarity": cached.similarity,
+            }
+
     chunks, retrieval_mode, _reranked = retrieve_repository_context(
         repository_id,
         message,
@@ -65,10 +89,23 @@ def chat_with_repository(
         history=history,
     )
 
+    sources = [_to_source(chunk) for chunk in chunks]
+    if can_store_cache:
+        store_cached_chat(
+            repository_id,
+            message,
+            question_embedding=question_embedding,
+            answer=answer,
+            sources=sources,
+            model=model,
+            retrieval_mode=retrieval_mode,
+        )
+
     return {
         "repository_id": repository_id,
         "answer": answer,
-        "sources": [_to_source(chunk) for chunk in chunks],
+        "sources": sources,
         "model": model,
         "retrieval_mode": retrieval_mode,
+        "cache_hit": False,
     }
