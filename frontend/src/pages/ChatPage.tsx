@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Bot, Loader2, MessageSquare, Send, Trash2, User } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { sendChatMessage } from '@/api/chat'
 import { fetchRepositories } from '@/api/repositories'
 import { ChatSourcesPanel } from '@/components/ChatSourcesPanel'
+import { MarkdownContent } from '@/components/MarkdownContent'
 import { PageHeader } from '@/components/PageHeader'
 import type { ConversationTurn } from '@/types/chat'
 
@@ -15,7 +15,7 @@ const EXAMPLE_QUESTIONS = [
   'What is the main entry point of this repository?',
   'How is authentication implemented?',
   'What API routes are exposed?',
-  'Summarize the project architecture.',
+  'Draw a mermaid diagram of the main frontend components.',
 ]
 
 function createTurnId() {
@@ -317,9 +317,10 @@ export function ChatPage() {
                         }`}
                       >
                         {turn.role === "assistant" ? (
-                          <div className="chat-prose prose prose-invert prose-sm max-w-none">
-                            <ReactMarkdown>{turn.content}</ReactMarkdown>
-                          </div>
+                          <MarkdownContent
+                            content={turn.content}
+                            className="chat-prose prose prose-invert prose-sm max-w-none"
+                          />
                         ) : (
                           <p className="whitespace-pre-wrap">{turn.content}</p>
                         )}
@@ -465,7 +466,10 @@ export function ChatPage() {
                 3. Semantic cache check, then hybrid retrieval + cross-encoder
                 rerank.
               </li>
-              <li>4. Agent-specific prompt generates the grounded answer.</li>
+              <li>
+                4. Agent-specific prompt generates the grounded answer (architecture
+                answers may include Mermaid diagrams).
+              </li>
               <li>
                 5. Similar questions may return a cached answer instantly.
               </li>

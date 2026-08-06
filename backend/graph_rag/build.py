@@ -30,11 +30,28 @@ def _module_key(module_name: str) -> str:
 
 
 def _extract_module_target(import_text: str) -> str:
+    """Parse a module path from a full import statement."""
     compact = " ".join(import_text.split())
-    match = re.search(r"(?:from|import)\s+([A-Za-z0-9_.]+)", compact)
-    if match:
-        return match.group(1)
-    return compact[:120]
+
+    quoted_from = re.search(r"from\s+['\"]([^'\"]+)['\"]", compact)
+    if quoted_from:
+        return quoted_from.group(1)
+
+    quoted_import = re.search(r"import\s+['\"]([^'\"]+)['\"]", compact)
+    if quoted_import:
+        return quoted_import.group(1)
+
+    bare_from = re.search(r"from\s+([A-Za-z0-9_@./-]+)", compact)
+    if bare_from:
+        return bare_from.group(1)
+
+    bare_import = re.search(r"import\s+([A-Za-z0-9_@./-]+)", compact)
+    if bare_import:
+        token = bare_import.group(1)
+        if token not in {"type", "{"}:
+            return token
+
+    return compact[:80]
 
 
 def build_repository_graph(repository_id: int) -> dict:

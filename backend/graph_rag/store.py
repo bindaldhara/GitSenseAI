@@ -120,11 +120,26 @@ def get_graph_counts(repository_id: int) -> dict:
     }
 
 
-def list_import_dependencies(repository_id: int, *, limit: int = 100) -> list[dict]:
+def list_import_dependencies(
+    repository_id: int,
+    *,
+    limit: int = 100,
+    source_path_filter: str | None = None,
+) -> list[dict]:
     """Return file → module import edges for dependency mapping."""
+    params: list = [repository_id]
+    path_clause = ""
+    if source_path_filter:
+        normalized = source_path_filter.replace("\\", "/")
+        basename = normalized.rsplit("/", 1)[-1]
+        path_clause = " AND (src.file_path ILIKE %s OR src.file_path ILIKE %s)"
+        params.extend([f"%{normalized}%", f"%{basename}%"])
+
+    params.append(limit)
+
     with db_cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT
                 e.source_key,
                 e.target_key,
@@ -137,11 +152,11 @@ def list_import_dependencies(repository_id: int, *, limit: int = 100) -> list[di
                 ON src.repository_id = e.repository_id AND src.node_key = e.source_key
             LEFT JOIN repository_graph_nodes tgt
                 ON tgt.repository_id = e.repository_id AND tgt.node_key = e.target_key
-            WHERE e.repository_id = %s AND e.edge_type = 'imports'
+            WHERE e.repository_id = %s AND e.edge_type = 'imports'{path_clause}
             ORDER BY src.file_path NULLS LAST, tgt.label
             LIMIT %s
             """,
-            (repository_id, limit),
+            params,
         )
         return list(cursor.fetchall())
 

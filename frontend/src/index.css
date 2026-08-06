@@ -434,6 +434,29 @@ body {
   padding: 0.75rem;
 }
 
+.chat-prose pre:has(.mermaid-diagram-thumb),
+.chat-prose pre:has(.mermaid-diagram-error) {
+  background: transparent;
+  padding: 0;
+  overflow: visible;
+}
+
+.mermaid-diagram-thumb .mermaid-diagram-svg svg {
+  display: block;
+  width: 100% !important;
+  max-width: 100%;
+  height: auto !important;
+  max-height: 110px;
+}
+
+.mermaid-diagram-expanded .mermaid-diagram-svg svg {
+  display: block;
+  width: 100% !important;
+  max-width: 100%;
+  height: auto !important;
+  min-height: 200px;
+}
+
 .nav-pill {
   border-radius: 9999px;
   padding: 0.5rem 0.875rem;

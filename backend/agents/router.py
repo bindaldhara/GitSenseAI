@@ -7,6 +7,7 @@ import re
 
 from agents.llm import invoke_llm_text
 from agents.state import AgentRoute, AgentState
+from diagrams.intent import wants_diagram
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ _DOC_HINTS = re.compile(
 _ARCH_HINTS = re.compile(
     r"\b("
     r"architecture|system design|service map|between (modules|services|components)|"
-    r"high-level|infrastructure|diagram|depend|dependencies"
+    r"high-level|infrastructure|diagram|mermaid|flowchart|draw|chart|visualize|depend|dependencies"
     r")\b",
     re.IGNORECASE,
 )
@@ -56,6 +57,8 @@ def _parse_route(raw: str) -> AgentRoute:
 
 def classify_route(question: str) -> AgentRoute:
     """Use keyword heuristics first, then the LLM for ambiguous questions."""
+    if wants_diagram(question):
+        return "architecture"
     if _DOC_HINTS.search(question) and not _CODE_HINTS.search(question):
         return "documentation"
     if _ARCH_HINTS.search(question) and not _CODE_HINTS.search(question):

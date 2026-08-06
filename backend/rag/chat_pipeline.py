@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from cache.semantic_cache import lookup_cached_chat, store_cached_chat
 from config import settings
+from diagrams.intent import wants_diagram
 from rag.generator import generate_repository_answer
 from rag.prompts import AgentProfile
 from rag.retriever import retrieve_repository_context
@@ -43,8 +44,9 @@ def execute_rag_chat(
     """Run semantic cache lookup, retrieval, generation, and optional cache store."""
     history = history or []
     cache_enabled = settings.semantic_cache_enabled if use_semantic_cache is None else use_semantic_cache
-    can_lookup_cache = cache_enabled
-    can_store_cache = cache_enabled
+    skip_cache = wants_diagram(message)
+    can_lookup_cache = cache_enabled and not skip_cache
+    can_store_cache = cache_enabled and not skip_cache
     steps: list[str] = []
     search_query = retrieval_query or message
 

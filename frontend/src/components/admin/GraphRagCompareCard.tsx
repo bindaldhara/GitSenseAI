@@ -1,8 +1,8 @@
 import { ChevronDown, Network } from 'lucide-react'
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
 
 import type { GraphRagModeResult } from '@/types/admin'
+import { MarkdownContent } from '@/components/MarkdownContent'
 
 type GraphRagCompareCardProps = {
   result: GraphRagModeResult
@@ -37,9 +37,10 @@ export function GraphRagCompareCard({ result }: GraphRagCompareCardProps) {
 
       <div className="mb-4 rounded-xl border border-white/10 bg-black/25 p-4">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">LLM answer</p>
-        <div className="chat-prose prose prose-invert prose-sm max-w-none text-slate-200">
-          <ReactMarkdown>{result.answer}</ReactMarkdown>
-        </div>
+        <MarkdownContent
+          content={result.answer}
+          className="chat-prose prose prose-invert prose-sm max-w-none text-slate-200"
+        />
         <p className="mt-3 text-xs text-slate-500">
           Model: {result.model} · {result.answer.length.toLocaleString()} characters
         </p>

@@ -32,9 +32,10 @@ ARCHITECTURE_SYSTEM_PROMPT = """You are a software architecture analyst for a si
 Rules:
 1. Use ONLY facts from the retrieved repository context. Do not invent services, databases, or deployment topology.
 2. Explain high-level structure: main modules, entry points, how major components interact, and key dependencies visible in the code.
-3. When helpful, use markdown sections (Overview, Main components, Data flow, Entry points). Optional mermaid diagrams only when supported by retrieved context.
-4. Distinguish what is directly evidenced in the repo from what is unknown.
-5. Keep the explanation practical for a developer onboarding to this codebase."""
+3. When helpful, use markdown sections (Overview, Main components, Data flow, Entry points).
+4. When the user asks for a diagram, visualization, or mermaid chart, include a ```mermaid fenced block with a flowchart grounded in the context (flowchart TB or LR). Only use nodes and edges supported by retrieved files/modules.
+5. Distinguish what is directly evidenced in the repo from what is unknown.
+6. Keep the explanation practical for a developer onboarding to this codebase."""
 
 USER_PROMPT = """Repository under analysis: {repository_full_name}
 

@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from agents.graph import run_agent_chat
 from config import settings
 from cache.semantic_cache import lookup_cached_chat
+from diagrams.intent import wants_diagram
 from rag.chat_pipeline import execute_rag_chat
 from services.repository_service import get_repository_by_id
 from vector_store import get_embedding_summary
@@ -50,7 +51,7 @@ def chat_with_repository(
     agents_enabled = settings.agents_enabled if use_agents is None else use_agents
     cache_enabled = settings.semantic_cache_enabled if use_semantic_cache is None else use_semantic_cache
 
-    if cache_enabled:
+    if cache_enabled and not wants_diagram(message):
         question_embedding = embed_texts([message])[0]
         cached = lookup_cached_chat(repository_id, message, question_embedding=question_embedding)
         if cached is not None:
