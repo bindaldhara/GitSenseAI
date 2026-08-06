@@ -22,6 +22,14 @@ function createTurnId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function formatAgentLabel(agent?: string | null) {
+  if (!agent) return null
+  if (agent === 'code') return 'Code Agent'
+  if (agent === 'documentation') return 'Documentation Agent'
+  if (agent === 'architecture') return 'Architecture Agent'
+  return agent
+}
+
 export function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedRepositoryId, setSelectedRepositoryId] = useState<number | null>(null)
@@ -105,6 +113,9 @@ export function ChatPage() {
         retrievalMode: response.retrieval_mode,
         cacheHit: response.cache_hit,
         cacheSimilarity: response.cache_similarity,
+        route: response.route,
+        agent: response.agent,
+        agentSteps: response.agent_steps,
       }
       setTurns((current) => [...current, assistantTurn])
       setActiveSources(response.sources)
@@ -177,7 +188,7 @@ export function ChatPage() {
       />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
-        <section className="glass-panel animate-fade-up animate-delay-2 flex h-[640px] flex-col overflow-hidden rounded-2xl">
+        <section className="glass-panel animate-fade-up animate-delay-2 flex h-160 flex-col overflow-hidden rounded-2xl">
           <div className="border-b border-white/10 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-white">
@@ -210,8 +221,10 @@ export function ChatPage() {
               ) : readyRepositories.length > 0 ? (
                 <select
                   id="chat-repository"
-                  value={selectedRepositoryId ?? ''}
-                  onChange={(event) => handleRepositoryChange(Number(event.target.value))}
+                  value={selectedRepositoryId ?? ""}
+                  onChange={(event) =>
+                    handleRepositoryChange(Number(event.target.value))
+                  }
                   className="input-field ui-button"
                 >
                   {readyRepositories.map((repository) => (
@@ -222,10 +235,10 @@ export function ChatPage() {
                 </select>
               ) : (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  No indexed repositories yet.{' '}
+                  No indexed repositories yet.{" "}
                   <Link to="/repositories" className="font-medium underline">
                     Submit and index a repository
-                  </Link>{' '}
+                  </Link>{" "}
                   first, then come back to chat.
                 </div>
               )}
@@ -233,7 +246,10 @@ export function ChatPage() {
 
             {selectedRepository ? (
               <p className="mt-3 text-xs text-slate-500">
-                Chatting with <span className="font-medium text-slate-300">{selectedRepository.full_name}</span>
+                Chatting with{" "}
+                <span className="font-medium text-slate-300">
+                  {selectedRepository.full_name}
+                </span>
               </p>
             ) : null}
           </div>
@@ -241,13 +257,16 @@ export function ChatPage() {
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
             {turns.length === 0 ? (
               <div className="flex flex-col items-center px-2 pt-8 pb-4 text-center">
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500/30 to-violet-500/20 text-brand-100 ring-1 ring-brand-400/20">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-brand-500/30 to-violet-500/20 text-brand-100 ring-1 ring-brand-400/20">
                   <Bot className="h-7 w-7" />
                 </div>
-                <h4 className="text-lg font-semibold text-white">Start a conversation</h4>
+                <h4 className="text-lg font-semibold text-white">
+                  Start a conversation
+                </h4>
                 <p className="mt-2 max-w-md text-sm text-slate-400">
-                  Ask how something works, where a feature lives, or what a module does. Answers are
-                  grounded in retrieved code, not the whole repo at once.
+                  Ask how something works, where a feature lives, or what a
+                  module does. Answers are grounded in retrieved code, not the
+                  whole repo at once.
                 </p>
 
                 {readyRepositories.length > 0 ? (
@@ -269,78 +288,95 @@ export function ChatPage() {
             ) : (
               <div className="space-y-4">
                 {turns.map((turn, index) => {
-                const previousTurn = index > 0 ? turns[index - 1] : null
-                const pairedQuestion =
-                  turn.role === 'assistant' && previousTurn?.role === 'user'
-                    ? previousTurn.content
-                    : undefined
-                const isSelectedSourceTurn = turn.role === 'assistant' && turn.id === selectedTurnId
+                  const previousTurn = index > 0 ? turns[index - 1] : null;
+                  const pairedQuestion =
+                    turn.role === "assistant" && previousTurn?.role === "user"
+                      ? previousTurn.content
+                      : undefined;
+                  const isSelectedSourceTurn =
+                    turn.role === "assistant" && turn.id === selectedTurnId;
 
-                return (
-                <div
-                  key={turn.id}
-                  className={`flex gap-3 ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {turn.role === 'assistant' ? (
-                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600/20 text-brand-200">
-                      <Bot className="h-4 w-4" />
-                    </div>
-                  ) : null}
+                  return (
+                    <div
+                      key={turn.id}
+                      className={`flex gap-3 ${turn.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      {turn.role === "assistant" ? (
+                        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600/20 text-brand-200">
+                          <Bot className="h-4 w-4" />
+                        </div>
+                      ) : null}
 
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
-                      turn.role === 'user'
-                        ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-brand-600/20'
-                        : isSelectedSourceTurn
-                          ? 'border border-brand-400/40 bg-slate-950/90 text-slate-200 ring-1 ring-brand-400/20'
-                          : 'border border-white/10 bg-slate-950/70 text-slate-200'
-                    }`}
-                  >
-                    {turn.role === 'assistant' ? (
-                      <div className="chat-prose prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>{turn.content}</ReactMarkdown>
-                      </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{turn.content}</p>
-                    )}
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                          turn.role === "user"
+                            ? "bg-linear-to-br from-brand-500 to-brand-600 text-white shadow-brand-600/20"
+                            : isSelectedSourceTurn
+                              ? "border border-brand-400/40 bg-slate-950/90 text-slate-200 ring-1 ring-brand-400/20"
+                              : "border border-white/10 bg-slate-950/70 text-slate-200"
+                        }`}
+                      >
+                        {turn.role === "assistant" ? (
+                          <div className="chat-prose prose prose-invert prose-sm max-w-none">
+                            <ReactMarkdown>{turn.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{turn.content}</p>
+                        )}
 
-                    {turn.role === 'assistant' && turn.model ? (
-                      <div className="mt-3 border-t border-white/10 pt-2 text-xs text-slate-500">
-                        <p>
-                          Model: {turn.model}
-                          {turn.retrievalMode ? ` · ${turn.retrievalMode} search` : ''}
-                          {turn.sources?.length ? ` · ${turn.sources.length} sources` : ''}
-                          {turn.cacheHit ? (
-                            <span className="text-emerald-300">
-                              {' '}
-                              · cached
-                              {turn.cacheSimilarity != null
-                                ? ` (${(turn.cacheSimilarity * 100).toFixed(0)}% similar)`
-                                : ''}
-                            </span>
-                          ) : null}
-                        </p>
-                        {turn.sources?.length && pairedQuestion ? (
-                          <button
-                            type="button"
-                            onClick={() => handleViewSources(turn, pairedQuestion)}
-                            className="ui-button mt-1 font-medium text-brand-200 hover:text-brand-100"
-                          >
-                            View sources
-                          </button>
+                        {turn.role === "assistant" &&
+                        (turn.model || turn.agent) ? (
+                          <div className="mt-3 border-t border-white/10 pt-2 text-xs text-slate-500">
+                            <p>
+                              {formatAgentLabel(turn.agent) ? (
+                                <span className="text-violet-300">
+                                  {formatAgentLabel(turn.agent)}
+                                </span>
+                              ) : null}
+                              {formatAgentLabel(turn.agent) && turn.model
+                                ? " · "
+                                : null}
+                              {turn.model ? `Model: ${turn.model}` : null}
+                              {turn.route ? ` · route: ${turn.route}` : ""}
+                              {turn.retrievalMode
+                                ? ` · ${turn.retrievalMode} search`
+                                : ""}
+                              {turn.sources?.length
+                                ? ` · ${turn.sources.length} sources`
+                                : ""}
+                              {turn.cacheHit ? (
+                                <span className="text-emerald-300">
+                                  {" "}
+                                  · cached
+                                  {turn.cacheSimilarity != null
+                                    ? ` (${(turn.cacheSimilarity * 100).toFixed(0)}% similar)`
+                                    : ""}
+                                </span>
+                              ) : null}
+                            </p>
+                            {turn.sources?.length && pairedQuestion ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleViewSources(turn, pairedQuestion)
+                                }
+                                className="ui-button mt-1 font-medium text-brand-200 hover:text-brand-100"
+                              >
+                                View sources
+                              </button>
+                            ) : null}
+                          </div>
                         ) : null}
                       </div>
-                    ) : null}
-                  </div>
 
-                  {turn.role === 'user' ? (
-                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-200">
-                      <User className="h-4 w-4" />
+                      {turn.role === "user" ? (
+                        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-200">
+                          <User className="h-4 w-4" />
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
-                )
-              })}
+                  );
+                })}
               </div>
             )}
 
@@ -354,32 +390,43 @@ export function ChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSubmit} className="border-t border-white/10 p-5">
+          <form
+            onSubmit={handleSubmit}
+            className="border-t border-white/10 p-5"
+          >
             <div className="flex gap-3">
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    if (!chatMutation.isPending && message.trim() && selectedRepositoryId) {
-                      chatMutation.mutate(message.trim())
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    if (
+                      !chatMutation.isPending &&
+                      message.trim() &&
+                      selectedRepositoryId
+                    ) {
+                      chatMutation.mutate(message.trim());
                     }
                   }
                 }}
                 rows={2}
                 placeholder={
                   selectedRepositoryId
-                    ? 'Ask a question about this repository…'
-                    : 'Index a repository first to start chatting'
+                    ? "Ask a question about this repository…"
+                    : "Index a repository first to start chatting"
                 }
                 disabled={!selectedRepositoryId || chatMutation.isPending}
-                className="input-field ui-button min-h-[52px] flex-1 resize-none disabled:cursor-not-allowed disabled:opacity-60"
+                className="input-field ui-button min-h-13 flex-1 resize-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 type="submit"
-                disabled={!selectedRepositoryId || !message.trim() || chatMutation.isPending}
-                className="btn-primary ui-button inline-flex h-[52px] w-[52px] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={
+                  !selectedRepositoryId ||
+                  !message.trim() ||
+                  chatMutation.isPending
+                }
+                className="btn-primary ui-button inline-flex h-13 w-13 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {chatMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -388,11 +435,13 @@ export function ChatPage() {
                 )}
               </button>
             </div>
-            <p className="mt-2 text-xs text-slate-500">Press Enter to send, Shift+Enter for a new line.</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Press Enter to send, Shift+Enter for a new line.
+            </p>
           </form>
         </section>
 
-        <aside className="animate-fade-up animate-delay-3 max-h-[640px] w-full space-y-4 self-start overflow-y-auto">
+        <aside className="animate-fade-up animate-delay-3 max-h-160 w-full space-y-4 self-start overflow-y-auto">
           <ChatSourcesPanel
             sources={activeSources ?? []}
             question={activeSourcesQuestion}
@@ -405,16 +454,25 @@ export function ChatPage() {
               How it works
             </h3>
             <ol className="space-y-2 text-sm text-slate-400">
-              <li>1. Your question is embedded with Sentence Transformers.</li>
-              <li>2. Qdrant (semantic) + BM25 (keyword) retrieve candidate chunks.</li>
-              <li>3. Reciprocal Rank Fusion merges both ranked lists.</li>
-              <li>4. A cross-encoder reranks candidates for sharper relevance.</li>
-              <li>5. Top chunks are sent to the LLM; answer + sources are shown.</li>
-              <li>6. Similar questions (same repo) may return a cached answer — skips retrieval and the LLM.</li>
+              <li>
+                1. Router Agent classifies intent (code, documentation, or
+                architecture).
+              </li>
+              <li>
+                2. Specialist agent runs: Code, Documentation, or Architecture.
+              </li>
+              <li>
+                3. Semantic cache check, then hybrid retrieval + cross-encoder
+                rerank.
+              </li>
+              <li>4. Agent-specific prompt generates the grounded answer.</li>
+              <li>
+                5. Similar questions may return a cached answer instantly.
+              </li>
             </ol>
           </div>
         </aside>
       </div>
     </main>
-  )
+  );
 }

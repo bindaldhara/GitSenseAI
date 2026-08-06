@@ -17,4 +17,5 @@ langchain
 langchain-classic
 langchain-community
 langchain-core
+langgraph
 rank-bm25

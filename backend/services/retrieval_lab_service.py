@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 
 from rag.retriever import retrieve_repository_context
 from schemas.retrieval_lab import RetrievalModeResult
-from services.chat_service import _to_source
+from rag.chat_pipeline import chunk_to_source
 from services.repository_service import get_repository_by_id
 from vector_store import get_embedding_summary
 
@@ -71,7 +71,7 @@ def compare_retrieval_modes(
                 label=mode["label"],
                 retrieval_mode=retrieval_mode,
                 retrieval_ms=retrieval_ms,
-                sources=[_to_source(chunk) for chunk in chunks],
+                sources=[chunk_to_source(chunk) for chunk in chunks],
             )
         )
 

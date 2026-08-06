@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     semantic_cache_similarity_threshold: float = 0.85
     semantic_cache_ttl_seconds: int = 86_400
     semantic_cache_max_entries_per_repo: int = 100
+    agents_enabled: bool = True
 
     @computed_field
     @property

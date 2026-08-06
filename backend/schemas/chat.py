@@ -24,6 +24,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Use Redis semantic cache for single-turn questions. Defaults to server SEMANTIC_CACHE_ENABLED.",
     )
+    use_agents: bool | None = Field(
+        default=None,
+        description="Route chat through LangGraph agents. Defaults to server AGENTS_ENABLED setting.",
+    )
 
 
 class RetrievedSource(BaseModel):
@@ -45,3 +49,6 @@ class ChatResponse(BaseModel):
     retrieval_mode: Literal["hybrid", "vector"]
     cache_hit: bool = False
     cache_similarity: float | None = None
+    route: Literal["code", "documentation", "architecture"] | None = None
+    agent: Literal["code", "documentation", "architecture"] | None = None
+    agent_steps: list[str] = Field(default_factory=list)

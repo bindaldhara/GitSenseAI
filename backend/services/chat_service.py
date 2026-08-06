@@ -4,40 +4,14 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 
-from cache.semantic_cache import lookup_cached_chat, store_cached_chat
+from agents.graph import run_agent_chat
 from config import settings
-from rag.generator import generate_repository_answer
-from rag.retriever import retrieve_repository_context
+from rag.chat_pipeline import execute_rag_chat
 from services.repository_service import get_repository_by_id
 from vector_store import get_embedding_summary
-from vector_store.embeddings import embed_texts
-from vector_store.qdrant_store import RetrievedChunk
 
 
-def _to_source(chunk: RetrievedChunk, *, excerpt_limit: int = 500) -> dict:
-    excerpt = chunk.text if len(chunk.text) <= excerpt_limit else f"{chunk.text[:excerpt_limit]}…"
-    return {
-        "file_path": chunk.file_path,
-        "language": chunk.language,
-        "chunk_kind": chunk.chunk_kind,
-        "symbol_name": chunk.symbol_name,
-        "start_line": chunk.start_line,
-        "end_line": chunk.end_line,
-        "score": chunk.score,
-        "excerpt": excerpt,
-    }
-
-
-def chat_with_repository(
-    repository_id: int,
-    *,
-    message: str,
-    top_k: int = 5,
-    history: list[dict[str, str]] | None = None,
-    use_hybrid: bool | None = None,
-    use_semantic_cache: bool | None = None,
-) -> dict:
-    """Answer a question about an indexed repository using RAG."""
+def _validate_repository_ready(repository_id: int) -> dict:
     repository = get_repository_by_id(repository_id)
 
     if repository["status"] != "cloned":
@@ -55,57 +29,45 @@ def chat_with_repository(
             status_code=status.HTTP_409_CONFLICT,
             detail="Repository has no indexed vectors. Reindex the repository before chatting.",
         )
+    return repository
 
+
+def chat_with_repository(
+    repository_id: int,
+    *,
+    message: str,
+    top_k: int = 5,
+    history: list[dict[str, str]] | None = None,
+    use_hybrid: bool | None = None,
+    use_semantic_cache: bool | None = None,
+    use_agents: bool | None = None,
+) -> dict:
+    """Answer a question about an indexed repository using agents or direct RAG."""
+    repository = _validate_repository_ready(repository_id)
     history = history or []
-    cache_enabled = settings.semantic_cache_enabled if use_semantic_cache is None else use_semantic_cache
-    can_lookup_cache = cache_enabled
-    can_store_cache = cache_enabled
+    agents_enabled = settings.agents_enabled if use_agents is None else use_agents
 
-    question_embedding: list[float] | None = None
-    if can_lookup_cache:
-        question_embedding = embed_texts([message])[0]
-        cached = lookup_cached_chat(repository_id, message, question_embedding=question_embedding)
-        if cached is not None:
-            return {
-                "repository_id": repository_id,
-                "answer": cached.answer,
-                "sources": cached.sources,
-                "model": cached.model,
-                "retrieval_mode": cached.retrieval_mode,
-                "cache_hit": True,
-                "cache_similarity": cached.similarity,
-            }
-
-    chunks, retrieval_mode, _reranked = retrieve_repository_context(
-        repository_id,
-        message,
-        top_k=top_k,
-        use_hybrid=use_hybrid,
-    )
-    answer, model = generate_repository_answer(
-        question=message,
-        repository_full_name=repository["full_name"],
-        chunks=chunks,
-        history=history,
-    )
-
-    sources = [_to_source(chunk) for chunk in chunks]
-    if can_store_cache:
-        store_cached_chat(
+    if agents_enabled:
+        return run_agent_chat(
             repository_id,
-            message,
-            question_embedding=question_embedding,
-            answer=answer,
-            sources=sources,
-            model=model,
-            retrieval_mode=retrieval_mode,
+            message=message,
+            repository_full_name=repository["full_name"],
+            top_k=top_k,
+            history=history,
+            use_hybrid=use_hybrid,
+            use_semantic_cache=use_semantic_cache,
         )
 
+    result = execute_rag_chat(
+        repository_id,
+        message=message,
+        repository_full_name=repository["full_name"],
+        top_k=top_k,
+        history=history,
+        use_hybrid=use_hybrid,
+        use_semantic_cache=use_semantic_cache,
+    )
     return {
         "repository_id": repository_id,
-        "answer": answer,
-        "sources": sources,
-        "model": model,
-        "retrieval_mode": retrieval_mode,
-        "cache_hit": False,
+        **result,
     }

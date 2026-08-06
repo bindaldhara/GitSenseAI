@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from openai import OpenAI
 
 from config import settings
-from rag.prompts import build_chat_messages
+from rag.prompts import AgentProfile, build_chat_messages
 from rag.retriever import format_chunk_for_prompt
 from vector_store.qdrant_store import RetrievedChunk
 
@@ -26,6 +26,7 @@ def _generate_with_openai(
     repository_full_name: str,
     context_blocks: list[str],
     history: list[dict[str, str]],
+    agent_profile: AgentProfile = "code",
 ) -> str:
     if not settings.openai_api_key:
         raise HTTPException(
@@ -39,6 +40,7 @@ def _generate_with_openai(
         repository_full_name=repository_full_name,
         context_blocks=context_blocks,
         history=history,
+        agent_profile=agent_profile,
     )
 
     response = client.chat.completions.create(
@@ -61,12 +63,14 @@ def _generate_with_ollama(
     repository_full_name: str,
     context_blocks: list[str],
     history: list[dict[str, str]],
+    agent_profile: AgentProfile = "code",
 ) -> str:
     messages = build_chat_messages(
         question=question,
         repository_full_name=repository_full_name,
         context_blocks=context_blocks,
         history=history,
+        agent_profile=agent_profile,
     )
 
     payload = {
@@ -106,6 +110,7 @@ def generate_repository_answer(
     repository_full_name: str,
     chunks: list[RetrievedChunk],
     history: list[dict[str, str]] | None = None,
+    agent_profile: AgentProfile = "code",
 ) -> tuple[str, str]:
     """Generate an answer grounded in retrieved chunks.
 
@@ -120,6 +125,7 @@ def generate_repository_answer(
             repository_full_name=repository_full_name,
             context_blocks=context_blocks,
             history=conversation_history,
+            agent_profile=agent_profile,
         )
         return answer, settings.ollama_model
 
@@ -128,5 +134,6 @@ def generate_repository_answer(
         repository_full_name=repository_full_name,
         context_blocks=context_blocks,
         history=conversation_history,
+        agent_profile=agent_profile,
     )
     return answer, settings.openai_model

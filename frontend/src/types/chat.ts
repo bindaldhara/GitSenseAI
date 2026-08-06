@@ -22,6 +22,8 @@ export type RetrievedSource = {
   excerpt: string
 }
 
+export type AgentRoute = 'code' | 'documentation' | 'architecture'
+
 export type ChatResponse = {
   repository_id: number
   answer: string
@@ -30,6 +32,9 @@ export type ChatResponse = {
   retrieval_mode: 'hybrid' | 'vector'
   cache_hit?: boolean
   cache_similarity?: number | null
+  route?: AgentRoute | null
+  agent?: AgentRoute | null
+  agent_steps?: string[]
 }
 
 export type ConversationTurn = {
@@ -41,4 +46,7 @@ export type ConversationTurn = {
   retrievalMode?: 'hybrid' | 'vector'
   cacheHit?: boolean
   cacheSimilarity?: number | null
+  route?: AgentRoute | null
+  agent?: AgentRoute | null
+  agentSteps?: string[]
 }
