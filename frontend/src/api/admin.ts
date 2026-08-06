@@ -1,4 +1,10 @@
-import type { CacheAnalyticsResponse, CacheClearResponse, OpsDashboardResponse } from '@/types/admin'
+import type {
+  CacheAnalyticsResponse,
+  CacheClearResponse,
+  GraphRagCompareRequest,
+  GraphRagCompareResponse,
+  OpsDashboardResponse,
+} from '@/types/admin'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 
 export async function fetchOpsDashboard() {
@@ -25,5 +31,20 @@ export async function clearSemanticCache() {
     return data
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Failed to clear semantic cache'))
+  }
+}
+
+export async function compareGraphRagModes(
+  repositoryId: number,
+  payload: GraphRagCompareRequest,
+) {
+  try {
+    const { data } = await apiClient.post<GraphRagCompareResponse>(
+      `/api/v1/admin/graph-rag/${repositoryId}/compare`,
+      payload,
+    )
+    return data
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Graph RAG comparison failed'))
   }
 }

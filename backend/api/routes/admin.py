@@ -3,7 +3,9 @@ from fastapi import APIRouter
 from cache.analytics import get_cache_analytics, reset_cache_analytics
 from cache.semantic_cache import clear_all_semantic_cache
 from schemas.admin import CacheAnalyticsResponse, CacheClearResponse, OpsDashboardResponse
+from schemas.graph_rag_lab import GraphRagCompareRequest, GraphRagCompareResponse
 from services.admin_ops_service import get_ops_dashboard
+from services.graph_rag_lab_service import compare_graph_rag_modes
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -29,3 +31,17 @@ def admin_clear_cache() -> CacheClearResponse:
         removed_keys=removed,
         message="Semantic cache cleared and analytics reset.",
     )
+
+
+@router.post("/graph-rag/{repository_id}/compare", response_model=GraphRagCompareResponse)
+def admin_compare_graph_rag(
+    repository_id: int,
+    payload: GraphRagCompareRequest,
+) -> GraphRagCompareResponse:
+    """Compare traditional RAG vs graph-augmented answers for interview demos."""
+    result = compare_graph_rag_modes(
+        repository_id,
+        message=payload.message,
+        top_k=payload.top_k,
+    )
+    return GraphRagCompareResponse.model_validate(result)

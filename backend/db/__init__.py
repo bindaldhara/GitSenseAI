@@ -82,6 +82,44 @@ CREATE INDEX IF NOT EXISTS idx_repository_skipped_files_repository_id
 ON repository_skipped_files (repository_id);
 """
 
+CREATE_REPOSITORY_GRAPH_NODES_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS repository_graph_nodes (
+    id SERIAL PRIMARY KEY,
+    repository_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    node_key TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    label TEXT NOT NULL,
+    file_path TEXT,
+    symbol_kind TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (repository_id, node_key)
+);
+"""
+
+CREATE_REPOSITORY_GRAPH_EDGES_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS repository_graph_edges (
+    id SERIAL PRIMARY KEY,
+    repository_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    source_key TEXT NOT NULL,
+    target_key TEXT NOT NULL,
+    edge_type TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (repository_id, source_key, target_key, edge_type)
+);
+"""
+
+CREATE_REPOSITORY_GRAPH_NODES_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_repository_graph_nodes_repository_id
+ON repository_graph_nodes (repository_id);
+"""
+
+CREATE_REPOSITORY_GRAPH_EDGES_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_repository_graph_edges_repository_id
+ON repository_graph_edges (repository_id);
+"""
+
 
 def get_connection() -> Connection:
     return connect(settings.database_url, row_factory=dict_row)
@@ -106,3 +144,7 @@ def initialize_database() -> None:
         cursor.execute(CREATE_REPOSITORY_SYMBOLS_REPO_INDEX_SQL)
         cursor.execute(CREATE_REPOSITORY_SYMBOLS_FILE_INDEX_SQL)
         cursor.execute(CREATE_REPOSITORY_SKIPPED_FILES_INDEX_SQL)
+        cursor.execute(CREATE_REPOSITORY_GRAPH_NODES_TABLE_SQL)
+        cursor.execute(CREATE_REPOSITORY_GRAPH_EDGES_TABLE_SQL)
+        cursor.execute(CREATE_REPOSITORY_GRAPH_NODES_INDEX_SQL)
+        cursor.execute(CREATE_REPOSITORY_GRAPH_EDGES_INDEX_SQL)

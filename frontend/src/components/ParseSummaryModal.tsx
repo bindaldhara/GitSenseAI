@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Database, FileCode2, SkipForward, Sparkles, X } from 'lucide-react'
+import { BarChart3, Database, FileCode2, Network, SkipForward, Sparkles, X } from 'lucide-react'
 
 import { fetchEmbeddingSummary, fetchParseSummary } from '@/api/repositories'
 import type { Repository } from '@/types/repository'
@@ -226,7 +226,7 @@ export function ParseSummaryModal({ repository, open, onClose }: ParseSummaryMod
             </div>
           ) : (
             <div className="space-y-5">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
                 <CountBadge label="Parsed files" value={summary.file_count} delay="0.04s" />
                 <CountBadge label="Symbols" value={summary.symbol_count} delay="0.08s" />
                 <CountBadge label="Skipped files" value={summary.skipped_count} delay="0.12s" />
@@ -262,6 +262,39 @@ export function ParseSummaryModal({ repository, open, onClose }: ParseSummaryMod
                   ) : (
                     <p className="mt-1 text-xs text-amber-300">Re-index for hybrid</p>
                   )}
+                </div>
+                <div
+                  className="animate-fade-up ui-card rounded-xl border border-white/10 bg-slate-950/60 p-4"
+                  style={{ animationDelay: '0.24s' }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Network className="h-3.5 w-3.5 text-emerald-300" />
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      Graph nodes
+                    </p>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {embeddingSummary ? embeddingSummary.graph_node_count.toLocaleString() : '—'}
+                  </p>
+                  {embeddingSummary?.graph_ready ? (
+                    <p className="mt-1 text-xs text-emerald-300">Graph RAG ready</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-amber-300">Re-index for graph</p>
+                  )}
+                </div>
+                <div
+                  className="animate-fade-up ui-card rounded-xl border border-white/10 bg-slate-950/60 p-4"
+                  style={{ animationDelay: '0.28s' }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Network className="h-3.5 w-3.5 text-emerald-300" />
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                      Graph edges
+                    </p>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold text-white">
+                    {embeddingSummary ? embeddingSummary.graph_edge_count.toLocaleString() : '—'}
+                  </p>
                 </div>
               </div>
 

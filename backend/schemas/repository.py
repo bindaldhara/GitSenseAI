@@ -64,3 +64,6 @@ class EmbeddingSummaryResponse(BaseModel):
     vector_count: int
     bm25_chunk_count: int = 0
     hybrid_ready: bool = False
+    graph_node_count: int = 0
+    graph_edge_count: int = 0
+    graph_ready: bool = False

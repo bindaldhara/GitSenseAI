@@ -45,11 +45,25 @@ def embed_repository(repository_id: int, clone_path: str | Path) -> dict:
 
     from rag.bm25_store import build_bm25_index, delete_bm25_index
 
+    from config import settings
+    from graph_rag.build import build_repository_graph
+
     # Clear stale vectors first (idempotent if none exist).
     deleted = delete_repository_points(repository_id)
     delete_bm25_index(repository_id)
     if deleted:
         logger.info("Cleared %s stale points before re-embedding repository_id=%s.", deleted, repository_id)
+
+    graph_stats = {"node_count": 0, "edge_count": 0}
+    if settings.graph_rag_enabled:
+        try:
+            graph_stats = build_repository_graph(repository_id)
+        except Exception:
+            logger.warning(
+                "Graph build failed for repository_id=%s — continuing with vector ingest.",
+                repository_id,
+                exc_info=True,
+            )
 
     # 1. Chunk
     chunk_result = chunk_repository(repository_id, clone_path)
@@ -91,23 +105,44 @@ def embed_repository(repository_id: int, clone_path: str | Path) -> dict:
         len(chunk_result.chunks),
         vectors_stored,
     )
-    return _summary(repository_id, chunk_result, vectors_stored=vectors_stored, bm25_chunks=bm25_chunks)
+    return _summary(
+        repository_id,
+        chunk_result,
+        vectors_stored=vectors_stored,
+        bm25_chunks=bm25_chunks,
+        graph_nodes=graph_stats.get("node_count", 0),
+        graph_edges=graph_stats.get("edge_count", 0),
+    )
 
 
 def get_embedding_summary(repository_id: int) -> dict:
     """Return embedding stats for a repository (Qdrant + BM25 counts)."""
     from rag.bm25_store import count_bm25_chunks
 
+    from graph_rag.store import get_graph_counts
+
     vector_count = count_repository_points(repository_id)
+    graph_counts = get_graph_counts(repository_id)
     return {
         "repository_id": repository_id,
         "vector_count": vector_count,
         "bm25_chunk_count": count_bm25_chunks(repository_id),
         "hybrid_ready": vector_count > 0 and count_bm25_chunks(repository_id) > 0,
+        "graph_node_count": graph_counts["node_count"],
+        "graph_edge_count": graph_counts["edge_count"],
+        "graph_ready": graph_counts["graph_ready"],
     }
 
 
-def _summary(repository_id: int, chunk_result, *, vectors_stored: int, bm25_chunks: int) -> dict:
+def _summary(
+    repository_id: int,
+    chunk_result,
+    *,
+    vectors_stored: int,
+    bm25_chunks: int,
+    graph_nodes: int = 0,
+    graph_edges: int = 0,
+) -> dict:
     return {
         "repository_id": repository_id,
         "files_chunked": chunk_result.files_chunked,
@@ -116,4 +151,6 @@ def _summary(repository_id: int, chunk_result, *, vectors_stored: int, bm25_chun
         "total_chunks": len(chunk_result.chunks),
         "vectors_stored": vectors_stored,
         "bm25_chunks": bm25_chunks,
+        "graph_nodes": graph_nodes,
+        "graph_edges": graph_edges,
     }

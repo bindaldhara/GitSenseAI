@@ -111,12 +111,15 @@ def generate_repository_answer(
     chunks: list[RetrievedChunk],
     history: list[dict[str, str]] | None = None,
     agent_profile: AgentProfile = "code",
+    extra_context_blocks: list[str] | None = None,
 ) -> tuple[str, str]:
     """Generate an answer grounded in retrieved chunks.
 
     Returns ``(answer, model_name)``.
     """
     context_blocks = _format_context_blocks(chunks)
+    if extra_context_blocks:
+        context_blocks = extra_context_blocks + context_blocks
     conversation_history = history or []
 
     if settings.llm_provider == "ollama":

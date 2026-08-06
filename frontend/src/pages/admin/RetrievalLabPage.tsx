@@ -5,7 +5,7 @@ import { FlaskConical, Loader2, Play } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 
 import { compareRetrievalModes } from '@/api/retrievalLab'
-import { fetchRepositories } from '@/api/repositories'
+import { fetchOpsDashboard } from '@/api/admin'
 import { PageHeader } from '@/components/PageHeader'
 import { RetrievalResultCard } from '@/components/RetrievalResultCard'
 
@@ -22,18 +22,22 @@ export function RetrievalLabPage() {
   const [question, setQuestion] = useState('')
   const [topK, setTopK] = useState(5)
 
-  const { data: repositoriesData, isLoading: repositoriesLoading } = useQuery({
-    queryKey: ['repositories'],
-    queryFn: fetchRepositories,
+  const { data: opsData, isLoading: repositoriesLoading } = useQuery({
+    queryKey: ['admin', 'ops'],
+    queryFn: fetchOpsDashboard,
   })
 
-  const readyRepositories = useMemo(
-    () => repositoriesData?.repositories.filter((repo) => repo.status === 'cloned') ?? [],
-    [repositoriesData],
+  const hybridReadyRepositories = useMemo(
+    () =>
+      opsData?.repositories.filter(
+        (repo) => repo.status === 'cloned' && repo.hybrid_ready,
+      ) ?? [],
+    [opsData],
   )
 
   useEffect(() => {
-    if (readyRepositories.length === 0) {
+    if (hybridReadyRepositories.length === 0) {
+      setSelectedRepositoryId(null)
       return
     }
 
@@ -42,17 +46,30 @@ export function RetrievalLabPage() {
 
     if (repoParam) {
       const parsedId = Number(repoParam)
-      if (!Number.isNaN(parsedId) && readyRepositories.some((repo) => repo.id === parsedId)) {
+      if (
+        !Number.isNaN(parsedId) &&
+        hybridReadyRepositories.some((repo) => repo.repository_id === parsedId)
+      ) {
         setSelectedRepositoryId(parsedId)
+      } else {
+        setSelectedRepositoryId(hybridReadyRepositories[0].repository_id)
       }
     } else {
-      setSelectedRepositoryId((current) => current ?? readyRepositories[0].id)
+      setSelectedRepositoryId((current) => {
+        if (
+          current != null &&
+          hybridReadyRepositories.some((repo) => repo.repository_id === current)
+        ) {
+          return current
+        }
+        return hybridReadyRepositories[0].repository_id
+      })
     }
 
     if (questionParam) {
       setQuestion(questionParam)
     }
-  }, [readyRepositories, searchParams])
+  }, [hybridReadyRepositories, searchParams])
 
   const compareMutation = useMutation({
     mutationFn: async () => {
@@ -101,14 +118,14 @@ export function RetrievalLabPage() {
             <select
               value={selectedRepositoryId ?? ''}
               onChange={(event) => setSelectedRepositoryId(Number(event.target.value))}
-              disabled={repositoriesLoading || readyRepositories.length === 0}
+              disabled={repositoriesLoading || hybridReadyRepositories.length === 0}
               className="ui-input w-full"
             >
-              {readyRepositories.length === 0 ? (
-                <option value="">No indexed repositories</option>
+              {hybridReadyRepositories.length === 0 ? (
+                <option value="">No hybrid-ready repositories — re-index for BM25 + vectors</option>
               ) : (
-                readyRepositories.map((repo) => (
-                  <option key={repo.id} value={repo.id}>
+                hybridReadyRepositories.map((repo) => (
+                  <option key={repo.repository_id} value={repo.repository_id}>
                     {repo.full_name}
                   </option>
                 ))

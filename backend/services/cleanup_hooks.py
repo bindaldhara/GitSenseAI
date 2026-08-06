@@ -1,7 +1,7 @@
 """Cascade cleanup and re-index hooks for downstream stores.
 
 These functions are called by delete/reindex flows in repository_service.py.
-Qdrant hooks are now live (Day 5). Graph RAG remains a stub.
+Qdrant hooks are now live (Day 5). Graph RAG cleanup is live (Day 12).
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 
 from cache.semantic_cache import invalidate_repository_cache
+from graph_rag.store import clear_repository_graph
 from rag.bm25_store import delete_bm25_index
 from vector_store.ingest import embed_repository
 from vector_store.qdrant_store import delete_repository_points
@@ -30,11 +31,13 @@ def cleanup_qdrant_for_repository(repository_id: int, full_name: str) -> None:
 
 
 def cleanup_graph_for_repository(repository_id: int, full_name: str) -> None:
-    """Remove graph nodes/edges for a repository when Graph RAG exists."""
+    """Remove graph nodes/edges for a repository."""
+    removed = clear_repository_graph(repository_id)
     logger.info(
-        "Graph cleanup hook skipped (not implemented yet) for repository_id=%s full_name=%s",
+        "Graph cleanup: cleared graph nodes for repository_id=%s full_name=%s (rows=%s)",
         repository_id,
         full_name,
+        removed,
     )
 
 

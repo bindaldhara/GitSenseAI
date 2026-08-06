@@ -60,12 +60,14 @@ def get_ops_dashboard() -> dict:
     repo_rows: list[RepositoryOpsRow] = []
     chat_ready_count = 0
     hybrid_ready_count = 0
+    graph_ready_count = 0
     cloned_count = 0
 
     for repository in repositories:
         summary = get_embedding_summary(repository["id"])
         chat_ready = summary["vector_count"] > 0
         hybrid_ready = summary["hybrid_ready"]
+        graph_ready = summary["graph_ready"]
 
         if repository["status"] == "cloned":
             cloned_count += 1
@@ -73,6 +75,8 @@ def get_ops_dashboard() -> dict:
             chat_ready_count += 1
         if hybrid_ready:
             hybrid_ready_count += 1
+        if graph_ready:
+            graph_ready_count += 1
 
         repo_rows.append(
             RepositoryOpsRow(
@@ -81,6 +85,7 @@ def get_ops_dashboard() -> dict:
                 status=repository["status"],
                 chat_ready=chat_ready,
                 hybrid_ready=hybrid_ready,
+                graph_ready=graph_ready,
             )
         )
 
@@ -89,6 +94,7 @@ def get_ops_dashboard() -> dict:
         cloned_repository_count=cloned_count,
         chat_ready_repository_count=chat_ready_count,
         hybrid_ready_repository_count=hybrid_ready_count,
+        graph_ready_repository_count=graph_ready_count,
     )
 
     config = PlatformConfig(
@@ -101,6 +107,8 @@ def get_ops_dashboard() -> dict:
         rerank_model=settings.rerank_model,
         hybrid_search_enabled=settings.hybrid_search_enabled,
         rerank_enabled=settings.rerank_enabled,
+        graph_rag_enabled=settings.graph_rag_enabled,
+        agents_enabled=settings.agents_enabled,
     )
 
     services = [

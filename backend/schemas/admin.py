@@ -13,6 +13,7 @@ class RepositoryOpsRow(BaseModel):
     status: str
     chat_ready: bool
     hybrid_ready: bool
+    graph_ready: bool = False
 
 
 class PlatformConfig(BaseModel):
@@ -25,6 +26,8 @@ class PlatformConfig(BaseModel):
     rerank_model: str
     hybrid_search_enabled: bool
     rerank_enabled: bool
+    graph_rag_enabled: bool = True
+    agents_enabled: bool = True
 
 
 class PlatformTotals(BaseModel):
@@ -32,6 +35,7 @@ class PlatformTotals(BaseModel):
     cloned_repository_count: int
     chat_ready_repository_count: int
     hybrid_ready_repository_count: int
+    graph_ready_repository_count: int = 0
 
 
 class OpsDashboardResponse(BaseModel):

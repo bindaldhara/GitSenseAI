@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from agents.llm import invoke_llm_text
 from agents.state import AgentRoute, AgentState
@@ -20,6 +21,29 @@ Reply with ONLY one lowercase word: code, documentation, or architecture. No pun
 
 _VALID_ROUTES: set[str] = {"code", "documentation", "architecture"}
 
+_CODE_HINTS = re.compile(
+    r"\b("
+    r"where is|where are|how is|how does|how do|what is|what does|"
+    r"defined|definition|implementation|implement|function|method|class|"
+    r"file|files|import|entry point|main component|component|api route|"
+    r"bug|test|tests|handler|endpoint|defined in|located"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_DOC_HINTS = re.compile(
+    r"\b(readme|user guide|tutorial|how to document|write documentation|markdown docs?)\b",
+    re.IGNORECASE,
+)
+
+_ARCH_HINTS = re.compile(
+    r"\b("
+    r"architecture|system design|service map|between (modules|services|components)|"
+    r"high-level|infrastructure|diagram|depend|dependencies"
+    r")\b",
+    re.IGNORECASE,
+)
+
 
 def _parse_route(raw: str) -> AgentRoute:
     normalized = raw.strip().lower().split()[0] if raw.strip() else "code"
@@ -31,7 +55,14 @@ def _parse_route(raw: str) -> AgentRoute:
 
 
 def classify_route(question: str) -> AgentRoute:
-    """Use the LLM to pick code, documentation, or architecture."""
+    """Use keyword heuristics first, then the LLM for ambiguous questions."""
+    if _DOC_HINTS.search(question) and not _CODE_HINTS.search(question):
+        return "documentation"
+    if _ARCH_HINTS.search(question) and not _CODE_HINTS.search(question):
+        return "architecture"
+    if _CODE_HINTS.search(question):
+        return "code"
+
     raw = invoke_llm_text(
         system=ROUTER_SYSTEM_PROMPT,
         user=f"Question: {question}",

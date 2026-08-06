@@ -36,6 +36,9 @@ def execute_rag_chat(
     use_semantic_cache: bool | None = None,
     agent_profile: AgentProfile = "code",
     retrieval_query: str | None = None,
+    include_graph_context: bool | None = None,
+    cache_route: str | None = None,
+    cache_agent: str | None = None,
 ) -> dict:
     """Run semantic cache lookup, retrieval, generation, and optional cache store."""
     history = history or []
@@ -60,6 +63,9 @@ def execute_rag_chat(
                 "cache_hit": True,
                 "cache_similarity": cached.similarity,
                 "agent_steps": steps,
+                "graph_context": [],
+                "route": cached.route,
+                "agent": cached.agent,
             }
         steps.append("cache_miss")
 
@@ -70,13 +76,28 @@ def execute_rag_chat(
         top_k=top_k,
         use_hybrid=use_hybrid,
     )
+
     steps.append("generate")
+    graph_blocks: list[str] = []
+    use_graph = (
+        include_graph_context
+        if include_graph_context is not None
+        else agent_profile == "architecture"
+    )
+    if use_graph and settings.graph_rag_enabled:
+        from graph_rag.retriever import retrieve_graph_context
+
+        graph_blocks = retrieve_graph_context(repository_id, message)
+        if graph_blocks:
+            steps.append("graph_context")
+
     answer, model = generate_repository_answer(
         question=message,
         repository_full_name=repository_full_name,
         chunks=chunks,
         history=history,
         agent_profile=agent_profile,
+        extra_context_blocks=graph_blocks,
     )
 
     sources = [chunk_to_source(chunk) for chunk in chunks]
@@ -89,6 +110,8 @@ def execute_rag_chat(
             sources=sources,
             model=model,
             retrieval_mode=retrieval_mode,
+            route=cache_route,
+            agent=cache_agent,
         )
         steps.append("cache_store")
 
@@ -100,4 +123,5 @@ def execute_rag_chat(
         "cache_hit": False,
         "cache_similarity": None,
         "agent_steps": steps,
+        "graph_context": graph_blocks,
     }

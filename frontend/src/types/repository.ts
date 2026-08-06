@@ -33,4 +33,30 @@ export type EmbeddingSummary = {
   vector_count: number
   bm25_chunk_count: number
   hybrid_ready: boolean
+  graph_node_count: number
+  graph_edge_count: number
+  graph_ready: boolean
+}
+
+export type GraphSummary = {
+  repository_id: number
+  node_count: number
+  edge_count: number
+  nodes_by_type: Record<string, number>
+  edges_by_type: Record<string, number>
+  graph_ready: boolean
+}
+
+export type GraphDependency = {
+  source_file: string
+  target_label: string
+  target_type: string
+  edge_type: string
+}
+
+export type GraphDependencies = {
+  repository_id: number
+  dependency_count: number
+  dependencies: GraphDependency[]
+  limit: number
 }

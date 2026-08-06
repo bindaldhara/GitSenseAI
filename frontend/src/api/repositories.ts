@@ -1,4 +1,10 @@
-import type { EmbeddingSummary, Repository, RepositoryParseSummary } from '@/types/repository'
+import type {
+  EmbeddingSummary,
+  GraphDependencies,
+  GraphSummary,
+  Repository,
+  RepositoryParseSummary,
+} from '@/types/repository'
 import { apiClient, getApiErrorMessage } from '@/lib/axios'
 
 export async function fetchRepositories() {
@@ -62,5 +68,28 @@ export async function fetchEmbeddingSummary(repositoryId: number) {
     return data
   } catch (error) {
     throw new Error(getApiErrorMessage(error, 'Failed to load embedding summary'))
+  }
+}
+
+export async function fetchGraphSummary(repositoryId: number) {
+  try {
+    const { data } = await apiClient.get<GraphSummary>(
+      `/api/v1/repositories/${repositoryId}/graph/summary`,
+    )
+    return data
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Failed to load graph summary'))
+  }
+}
+
+export async function fetchGraphDependencies(repositoryId: number, limit = 100) {
+  try {
+    const { data } = await apiClient.get<GraphDependencies>(
+      `/api/v1/repositories/${repositoryId}/graph/dependencies`,
+      { params: { limit } },
+    )
+    return data
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Failed to load graph dependencies'))
   }
 }

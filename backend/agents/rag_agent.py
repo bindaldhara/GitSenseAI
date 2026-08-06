@@ -38,6 +38,8 @@ def run_specialist_rag(state: AgentState, *, agent: AgentName) -> AgentState:
         use_semantic_cache=state.get("use_semantic_cache"),
         agent_profile=agent,
         retrieval_query=retrieval_query,
+        cache_route=state.get("route"),
+        cache_agent=agent,
     )
     steps = list(state.get("agent_steps") or [])
     steps.append(f"agent:{agent}")

@@ -21,13 +21,46 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+function StatCard({
+  label,
+  value,
+  hint,
+  accent = 'default',
+}: {
+  label: string
+  value: string | number
+  hint?: string
+  accent?: 'default' | 'green'
+}) {
+  const valueColor = accent === 'green' ? 'text-emerald-300' : 'text-white'
+
   return (
     <div className="glass-panel rounded-2xl p-5">
       <p className="text-xs uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className={`mt-2 text-2xl font-semibold ${valueColor}`}>{value}</p>
       {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
     </div>
+  )
+}
+
+const READINESS_COLORS = {
+  ready: 'text-emerald-300',
+  pending: 'text-amber-300',
+} as const
+
+function ReadinessStatus({
+  ready,
+  readyLabel = 'ready',
+  pendingLabel = 're-index',
+}: {
+  ready: boolean
+  readyLabel?: string
+  pendingLabel?: string
+}) {
+  return (
+    <span className={ready ? READINESS_COLORS.ready : READINESS_COLORS.pending}>
+      {ready ? readyLabel : pendingLabel}
+    </span>
   )
 }
 
@@ -98,7 +131,7 @@ export function OpsDashboardPage() {
 
       <section className="mb-8">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">Overview</h3>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard label="Repositories" value={data.totals.repository_count} hint="Added to GitSense" />
           <StatCard
             label="Cloned"
@@ -109,11 +142,19 @@ export function OpsDashboardPage() {
             label="Chat-ready"
             value={data.totals.chat_ready_repository_count}
             hint="Embeddings built — can use Chat"
+            accent="green"
           />
           <StatCard
             label="Hybrid-ready"
             value={data.totals.hybrid_ready_repository_count}
             hint="Full retrieval pipeline (re-index if missing)"
+            accent="green"
+          />
+          <StatCard
+            label="Graph-ready"
+            value={data.totals.graph_ready_repository_count}
+            hint="Knowledge graph built — needed for Graph RAG demo"
+            accent="green"
           />
         </div>
       </section>
@@ -131,6 +172,8 @@ export function OpsDashboardPage() {
               ['Rerank model', data.config.rerank_model],
               ['Hybrid search', data.config.hybrid_search_enabled ? 'enabled' : 'disabled'],
               ['Cross-encoder rerank', data.config.rerank_enabled ? 'enabled' : 'disabled'],
+              ['Graph RAG', data.config.graph_rag_enabled ? 'enabled' : 'disabled'],
+              ['Multi-agent routing', data.config.agents_enabled ? 'enabled' : 'disabled'],
             ].map(([label, value]) => (
               <div key={label} className="grid gap-1 px-4 py-3 sm:grid-cols-[200px_1fr]">
                 <dt className="text-slate-500">{label}</dt>
@@ -152,12 +195,13 @@ export function OpsDashboardPage() {
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Chat</th>
                   <th className="px-4 py-3 font-medium">Hybrid</th>
+                  <th className="px-4 py-3 font-medium">Graph</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {data.repositories.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-slate-500">
+                    <td colSpan={5} className="px-4 py-6 text-slate-500">
                       No repositories yet.
                     </td>
                   </tr>
@@ -167,18 +211,17 @@ export function OpsDashboardPage() {
                       <td className="px-4 py-3 font-medium text-white">{repo.full_name}</td>
                       <td className="px-4 py-3 capitalize">{repo.status}</td>
                       <td className="px-4 py-3">
-                        {repo.chat_ready ? (
-                          <span className="text-emerald-300">ready</span>
-                        ) : (
-                          <span className="text-amber-300">embed first</span>
-                        )}
+                        <ReadinessStatus
+                          ready={repo.chat_ready}
+                          readyLabel="ready"
+                          pendingLabel="embed first"
+                        />
                       </td>
                       <td className="px-4 py-3">
-                        {repo.hybrid_ready ? (
-                          <span className="text-emerald-300">ready</span>
-                        ) : (
-                          <span className="text-amber-300">re-index</span>
-                        )}
+                        <ReadinessStatus ready={repo.hybrid_ready} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <ReadinessStatus ready={repo.graph_ready} />
                       </td>
                     </tr>
                   ))

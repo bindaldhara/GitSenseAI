@@ -30,6 +30,8 @@ class CachedChatResponse:
     retrieval_mode: str
     similarity: float
     cached_question: str
+    route: str | None = None
+    agent: str | None = None
 
 
 def _repo_index_key(repository_id: int) -> str:
@@ -116,6 +118,8 @@ def lookup_cached_chat(
             retrieval_mode=str(best_payload.get("retrieval_mode", "vector")),
             similarity=best_similarity,
             cached_question=str(best_payload.get("question", "")),
+            route=best_payload.get("route"),
+            agent=best_payload.get("agent"),
         )
     except Exception:
         logger.warning("Semantic cache lookup failed; continuing without cache.", exc_info=True)
@@ -131,6 +135,8 @@ def store_cached_chat(
     sources: list[dict[str, Any]],
     model: str,
     retrieval_mode: str,
+    route: str | None = None,
+    agent: str | None = None,
 ) -> None:
     """Persist a chat response for future semantic lookups."""
     if not settings.semantic_cache_enabled:
@@ -148,6 +154,8 @@ def store_cached_chat(
             "sources": sources,
             "model": model,
             "retrieval_mode": retrieval_mode,
+            "route": route,
+            "agent": agent,
             "created_at": datetime.now(UTC).isoformat(),
         }
         ttl = settings.semantic_cache_ttl_seconds
