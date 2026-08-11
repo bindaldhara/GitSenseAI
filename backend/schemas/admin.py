@@ -11,6 +11,8 @@ class RepositoryOpsRow(BaseModel):
     repository_id: int
     full_name: str
     status: str
+    user_id: int | None = None
+    owner_email: str | None = None
     chat_ready: bool
     hybrid_ready: bool
     graph_ready: bool = False

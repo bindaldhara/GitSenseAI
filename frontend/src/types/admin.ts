@@ -8,6 +8,8 @@ export type RepositoryOpsRow = {
   repository_id: number
   full_name: string
   status: string
+  user_id?: number | null
+  owner_email?: string | null
   chat_ready: boolean
   hybrid_ready: boolean
   graph_ready: boolean

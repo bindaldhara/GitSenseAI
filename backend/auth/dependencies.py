@@ -59,6 +59,17 @@ def require_user(
     return user
 
 
+def require_admin(
+    user: Annotated[AuthenticatedUser, Depends(require_user)],
+) -> AuthenticatedUser:
+    if user.email.strip().lower() != settings.admin_email.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    return user
+
+
 # When auth is enabled, unauthenticated callers cannot scope repos to a user.
 def get_user_id_for_scope(user: AuthenticatedUser | None) -> int | None:
     if not settings.auth_enabled:

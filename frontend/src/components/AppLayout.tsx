@@ -1,4 +1,4 @@
-import { FolderGit2, Home, LogIn, LogOut, MessageSquare, Search } from 'lucide-react'
+import { FolderGit2, Home, LayoutDashboard, LogIn, LogOut, MessageSquare, Search } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/context/AuthContext'
@@ -8,7 +8,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function AppLayout() {
   const location = useLocation()
-  const { isAuthenticated, user, logout, isLoading } = useAuth()
+  const { isAuthenticated, user, logout, isLoading, isAdmin } = useAuth()
 
   return (
     <div className="app-shell min-h-screen">
@@ -41,6 +41,12 @@ export function AppLayout() {
               <Search className="h-4 w-4" />
               Search
             </NavLink>
+            {isAdmin ? (
+              <NavLink to="/admin/ops" className={navLinkClass}>
+                <LayoutDashboard className="h-4 w-4" />
+                Admin
+              </NavLink>
+            ) : null}
           </nav>
 
           <div className="flex items-center gap-2">

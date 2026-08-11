@@ -1,5 +1,8 @@
-from fastapi import APIRouter
+from typing import Annotated
 
+from fastapi import APIRouter, Depends
+
+from auth.dependencies import AuthenticatedUser, require_admin
 from cache.analytics import get_cache_analytics, reset_cache_analytics
 from cache.semantic_cache import clear_all_semantic_cache
 from schemas.admin import CacheAnalyticsResponse, CacheClearResponse, OpsDashboardResponse
@@ -11,19 +14,25 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/ops", response_model=OpsDashboardResponse)
-def admin_ops_dashboard() -> OpsDashboardResponse:
+def admin_ops_dashboard(
+    _admin: Annotated[AuthenticatedUser, Depends(require_admin)],
+) -> OpsDashboardResponse:
     """Platform health and indexing statistics for the internal admin UI."""
     return OpsDashboardResponse.model_validate(get_ops_dashboard())
 
 
 @router.get("/cache", response_model=CacheAnalyticsResponse)
-def admin_cache_analytics() -> CacheAnalyticsResponse:
+def admin_cache_analytics(
+    _admin: Annotated[AuthenticatedUser, Depends(require_admin)],
+) -> CacheAnalyticsResponse:
     """Semantic cache hit/miss analytics for the internal admin UI."""
     return CacheAnalyticsResponse.model_validate(get_cache_analytics())
 
 
 @router.delete("/cache", response_model=CacheClearResponse)
-def admin_clear_cache() -> CacheClearResponse:
+def admin_clear_cache(
+    _admin: Annotated[AuthenticatedUser, Depends(require_admin)],
+) -> CacheClearResponse:
     """Clear all semantic cache entries and reset analytics counters."""
     removed = clear_all_semantic_cache()
     reset_cache_analytics()
@@ -37,6 +46,7 @@ def admin_clear_cache() -> CacheClearResponse:
 def admin_compare_graph_rag(
     repository_id: int,
     payload: GraphRagCompareRequest,
+    _admin: Annotated[AuthenticatedUser, Depends(require_admin)],
 ) -> GraphRagCompareResponse:
     """Compare traditional RAG vs graph-augmented answers for interview demos."""
     result = compare_graph_rag_modes(

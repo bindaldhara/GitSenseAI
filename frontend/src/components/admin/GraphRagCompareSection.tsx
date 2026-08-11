@@ -5,6 +5,7 @@ import { Loader2, Network, Play } from 'lucide-react'
 
 import { compareGraphRagModes, fetchOpsDashboard } from '@/api/admin'
 import { GraphRagCompareCard } from '@/components/admin/GraphRagCompareCard'
+import { formatRepositorySelectLabel } from '@/lib/repoOwner'
 
 const EXAMPLE_QUESTIONS = [
   'What files import react?',
@@ -83,7 +84,7 @@ export function GraphRagCompareSection() {
             ) : (
               graphReadyRepositories.map((repo) => (
                 <option key={repo.repository_id} value={repo.repository_id}>
-                  {repo.full_name}
+                  {formatRepositorySelectLabel(repo)}
                 </option>
               ))
             )}

@@ -16,11 +16,24 @@ from schemas.admin import (
     RepositoryOpsRow,
     ServiceHealth,
 )
-from services.repository_service import list_repositories
 from vector_store import get_embedding_summary
 from vector_store.embeddings import EMBEDDING_DIMENSION, MODEL_NAME
 
 logger = logging.getLogger(__name__)
+
+
+def _list_repositories_for_ops() -> list[dict]:
+    """All repositories with owner email for the admin ops dashboard."""
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT r.id, r.full_name, r.status, r.user_id, u.email AS owner_email
+            FROM repositories r
+            LEFT JOIN users u ON r.user_id = u.id
+            ORDER BY r.created_at DESC
+            """
+        )
+        return list(cursor.fetchall())
 
 
 def _check_postgres() -> ServiceHealth:
@@ -56,7 +69,7 @@ def _check_qdrant() -> ServiceHealth:
 
 def get_ops_dashboard() -> dict:
     """Build ops dashboard payload for the admin UI."""
-    repositories = list_repositories()
+    repositories = _list_repositories_for_ops()
     repo_rows: list[RepositoryOpsRow] = []
     chat_ready_count = 0
     hybrid_ready_count = 0
@@ -83,6 +96,8 @@ def get_ops_dashboard() -> dict:
                 repository_id=repository["id"],
                 full_name=repository["full_name"],
                 status=repository["status"],
+                user_id=repository.get("user_id"),
+                owner_email=repository.get("owner_email"),
                 chat_ready=chat_ready,
                 hybrid_ready=hybrid_ready,
                 graph_ready=graph_ready,

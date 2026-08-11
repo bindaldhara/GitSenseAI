@@ -8,6 +8,7 @@ import { compareRetrievalModes } from '@/api/retrievalLab'
 import { fetchOpsDashboard } from '@/api/admin'
 import { PageHeader } from '@/components/PageHeader'
 import { RetrievalResultCard } from '@/components/RetrievalResultCard'
+import { formatRepositorySelectLabel } from '@/lib/repoOwner'
 
 const EXAMPLE_QUESTIONS = [
   'Summarize the project architecture.',
@@ -126,7 +127,7 @@ export function RetrievalLabPage() {
               ) : (
                 hybridReadyRepositories.map((repo) => (
                   <option key={repo.repository_id} value={repo.repository_id}>
-                    {repo.full_name}
+                    {formatRepositorySelectLabel(repo)}
                   </option>
                 ))
               )}

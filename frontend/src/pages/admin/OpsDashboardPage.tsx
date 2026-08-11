@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Loader2, Server } from 'lucide-react'
 
 import { fetchOpsDashboard } from '@/api/admin'
 import { PageHeader } from '@/components/PageHeader'
+import { formatRepositoryOwnerLabel } from '@/lib/repoOwner'
 
 function StatusBadge({ status }: { status: string }) {
   const healthy = status === 'healthy'
@@ -192,6 +193,7 @@ export function OpsDashboardPage() {
               <thead className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Repository</th>
+                  <th className="px-4 py-3 font-medium">Owner</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Chat</th>
                   <th className="px-4 py-3 font-medium">Hybrid</th>
@@ -201,7 +203,7 @@ export function OpsDashboardPage() {
               <tbody className="divide-y divide-white/10">
                 {data.repositories.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-slate-500">
+                    <td colSpan={6} className="px-4 py-6 text-slate-500">
                       No repositories yet.
                     </td>
                   </tr>
@@ -209,6 +211,17 @@ export function OpsDashboardPage() {
                   data.repositories.map((repo) => (
                     <tr key={repo.repository_id} className="text-slate-300">
                       <td className="px-4 py-3 font-medium text-white">{repo.full_name}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={
+                            repo.owner_email
+                              ? 'text-slate-300'
+                              : 'text-slate-500'
+                          }
+                        >
+                          {formatRepositoryOwnerLabel(repo)}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 capitalize">{repo.status}</td>
                       <td className="px-4 py-3">
                         <ReadinessStatus

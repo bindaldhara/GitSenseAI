@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/context/AuthContext'
 import { PageHeader } from '@/components/PageHeader'
+import { isAdminEmail } from '@/lib/admin'
 
 export function RegisterPage() {
-  const { register } = useAuth()
+  const { register, isAuthenticated, isAdmin, isLoading } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to={isAdmin ? '/admin/ops' : '/chat'} replace />
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -19,7 +24,7 @@ export function RegisterPage() {
     setIsSubmitting(true)
     try {
       await register(email, password)
-      navigate('/chat')
+      navigate(isAdminEmail(email) ? '/admin/ops' : '/chat')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {

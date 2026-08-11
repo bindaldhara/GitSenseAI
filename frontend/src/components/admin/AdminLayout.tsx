@@ -1,5 +1,7 @@
 import { Activity, ArrowLeft, Database, FlaskConical, LayoutDashboard, Network } from 'lucide-react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet } from 'react-router-dom'
+
+import { useAuth } from '@/context/AuthContext'
 
 const adminNavClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -10,6 +12,24 @@ const adminNavClass = ({ isActive }: { isActive: boolean }) =>
   ].join(' ')
 
 export function AdminLayout() {
+  const { isAuthenticated, isAdmin, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#05080f] text-sm text-slate-400">
+        Loading…
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/chat" replace />
+  }
+
   return (
     <div className="min-h-screen bg-[#05080f]">
       <header className="border-b border-white/10 bg-[#070b14]/90 backdrop-blur-xl">

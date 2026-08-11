@@ -16,8 +16,8 @@ import { SearchPage } from '@/pages/SearchPage'
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<HomePage />} />
@@ -39,8 +39,8 @@ function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 
