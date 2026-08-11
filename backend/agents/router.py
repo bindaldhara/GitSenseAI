@@ -61,7 +61,7 @@ def classify_route(question: str) -> AgentRoute:
         return "architecture"
     if _DOC_HINTS.search(question) and not _CODE_HINTS.search(question):
         return "documentation"
-    if _ARCH_HINTS.search(question) and not _CODE_HINTS.search(question):
+    if _ARCH_HINTS.search(question):
         return "architecture"
     if _CODE_HINTS.search(question):
         return "code"

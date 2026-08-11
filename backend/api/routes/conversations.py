@@ -10,6 +10,7 @@ from schemas.conversation import (
 )
 from services.conversation_service import (
     create_conversation,
+    delete_conversation,
     get_conversation,
     list_conversation_messages,
     list_conversations,
@@ -47,6 +48,14 @@ def read_conversation(
 ) -> ConversationResponse:
     row = get_conversation(conversation_id, user.id)
     return ConversationResponse.model_validate(row)
+
+
+@router.delete("/{conversation_id}", status_code=204)
+def delete_existing_conversation(
+    conversation_id: int,
+    user: AuthenticatedUser = Depends(require_user),
+) -> None:
+    delete_conversation(conversation_id, user.id)
 
 
 @router.get("/{conversation_id}/messages", response_model=ConversationMessagesResponse)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Expand, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -9,12 +9,19 @@ type MarkdownContentProps = {
   className?: string
 }
 
+const mermaidSvgCache = new Map<string, string>()
+
 function isLikelyMermaid(code: string): boolean {
   const trimmed = code.trim()
   return /^(flowchart|graph)\s/i.test(trimmed)
 }
 
+let mermaidInitialized = false
+
 function initMermaid() {
+  if (mermaidInitialized) {
+    return
+  }
   mermaid.initialize({
     startOnLoad: false,
     theme: 'dark',
@@ -26,6 +33,7 @@ function initMermaid() {
       curve: 'basis',
     },
   })
+  mermaidInitialized = true
 }
 
 function styleRenderedSvg(container: HTMLElement, mode: 'thumb' | 'expanded') {
@@ -127,17 +135,28 @@ function MermaidDiagramModal({ svg, onClose }: MermaidDiagramModalProps) {
   )
 }
 
-function MermaidDiagram({ code }: { code: string }) {
-  const [svg, setSvg] = useState<string | null>(null)
-  const [renderState, setRenderState] = useState<'loading' | 'ok' | 'error'>('loading')
+const MermaidDiagram = memo(function MermaidDiagram({ code }: { code: string }) {
+  const trimmedCode = code.trim()
+  const cachedSvg = mermaidSvgCache.get(trimmedCode)
+  const [svg, setSvg] = useState<string | null>(cachedSvg ?? null)
+  const [renderState, setRenderState] = useState<'loading' | 'ok' | 'error'>(
+    cachedSvg ? 'ok' : 'loading',
+  )
   const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
 
-    if (!isLikelyMermaid(code)) {
+    if (!isLikelyMermaid(trimmedCode)) {
       setRenderState('error')
       setSvg(null)
+      return
+    }
+
+    const existing = mermaidSvgCache.get(trimmedCode)
+    if (existing) {
+      setSvg(existing)
+      setRenderState('ok')
       return
     }
 
@@ -148,10 +167,11 @@ function MermaidDiagram({ code }: { code: string }) {
     const renderId = `mermaid-${Math.random().toString(36).slice(2)}`
 
     void mermaid
-      .parse(code)
-      .then(() => mermaid.render(renderId, code))
+      .parse(trimmedCode)
+      .then(() => mermaid.render(renderId, trimmedCode))
       .then(({ svg: renderedSvg }) => {
         if (!cancelled) {
+          mermaidSvgCache.set(trimmedCode, renderedSvg)
           setSvg(renderedSvg)
           setRenderState('ok')
         }
@@ -166,7 +186,7 @@ function MermaidDiagram({ code }: { code: string }) {
     return () => {
       cancelled = true
     }
-  }, [code])
+  }, [trimmedCode])
 
   if (renderState === 'error') {
     return (
@@ -174,7 +194,7 @@ function MermaidDiagram({ code }: { code: string }) {
         <p className="mb-2 text-xs text-amber-200">
           Diagram could not be rendered (invalid Mermaid syntax).
         </p>
-        <pre className="overflow-x-auto text-xs leading-relaxed text-slate-400">{code}</pre>
+        <pre className="overflow-x-auto text-xs leading-relaxed text-slate-400">{trimmedCode}</pre>
       </div>
     )
   }
@@ -212,32 +232,36 @@ function MermaidDiagram({ code }: { code: string }) {
       {expanded ? <MermaidDiagramModal svg={svg} onClose={() => setExpanded(false)} /> : null}
     </>
   )
+})
+
+const markdownComponents = {
+  pre({ children }: { children?: React.ReactNode }) {
+    const child = children as { props?: { className?: string } } | undefined
+    const className = child?.props?.className ?? ''
+    if (className.includes('language-mermaid')) {
+      return <>{children}</>
+    }
+    return <pre>{children}</pre>
+  },
+  code({
+    className: codeClassName,
+    children,
+  }: {
+    className?: string
+    children?: React.ReactNode
+  }) {
+    const text = String(children).replace(/\n$/, '')
+    if (codeClassName?.includes('language-mermaid')) {
+      return <MermaidDiagram code={text} />
+    }
+    return <code className={codeClassName}>{children}</code>
+  },
 }
 
 export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
   return (
     <div className={className}>
-      <ReactMarkdown
-        components={{
-          pre({ children }) {
-            const child = children as { props?: { className?: string } } | undefined
-            const className = child?.props?.className ?? ''
-            if (className.includes('language-mermaid')) {
-              return <>{children}</>
-            }
-            return <pre>{children}</pre>
-          },
-          code({ className: codeClassName, children }) {
-            const text = String(children).replace(/\n$/, '')
-            if (codeClassName?.includes('language-mermaid')) {
-              return <MermaidDiagram code={text} />
-            }
-            return <code className={codeClassName}>{children}</code>
-          },
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+      <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
     </div>
   )
 }

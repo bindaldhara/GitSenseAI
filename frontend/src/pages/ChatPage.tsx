@@ -5,7 +5,7 @@ import { Bot, Loader2, MessageSquare, Send, Trash2, User } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { sendChatMessage } from '@/api/chat'
-import { fetchConversationMessages, fetchConversations } from '@/api/conversations'
+import { fetchConversationMessages, fetchConversations, deleteConversation } from '@/api/conversations'
 import { fetchRepositories } from '@/api/repositories'
 import { ChatSourcesPanel } from '@/components/ChatSourcesPanel'
 import { MarkdownContent } from '@/components/MarkdownContent'
@@ -86,8 +86,11 @@ export function ChatPage() {
   }, [readyRepositories, searchParams])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [turns])
+    if (turns.length === 0) {
+      return
+    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+  }, [turns.length])
 
   const chatMutation = useMutation({
     mutationFn: async (question: string) => {
@@ -117,7 +120,6 @@ export function ChatPage() {
       }
       setTurns((current) => [...current, userTurn])
       setMessage('')
-      setActiveSources([])
       setActiveSourcesQuestion(question)
       setSelectedTurnId(null)
     },
@@ -168,13 +170,38 @@ export function ChatPage() {
     setMessage('')
   }
 
-  function handleClearConversation() {
+  function resetChatView() {
     setActiveConversationId(null)
     setTurns([])
     setActiveSources([])
     setActiveSourcesQuestion(undefined)
     setSelectedTurnId(null)
     setMessage('')
+  }
+
+  const clearConversationMutation = useMutation({
+    mutationFn: deleteConversation,
+    onSuccess: () => {
+      resetChatView()
+      void queryClient.invalidateQueries({ queryKey: ['conversations', selectedRepositoryId] })
+    },
+  })
+
+  function handleClearConversation() {
+    if (activeConversationId && isAuthenticated) {
+      const conversationTitle =
+        savedConversations.find((conversation) => conversation.id === activeConversationId)
+          ?.title ?? 'this conversation'
+      const confirmed = window.confirm(
+        `Delete "${conversationTitle}"? This cannot be undone.`,
+      )
+      if (!confirmed) {
+        return
+      }
+      clearConversationMutation.mutate(activeConversationId)
+      return
+    }
+    resetChatView()
   }
 
   function handleViewSources(turn: ConversationTurn, question: string) {
@@ -189,7 +216,7 @@ export function ChatPage() {
 
   async function handleConversationSelect(value: string) {
     if (value === 'new') {
-      handleClearConversation()
+      resetChatView()
       return
     }
     const conversationId = Number(value)
@@ -292,11 +319,19 @@ export function ChatPage() {
                 <button
                   type="button"
                   onClick={handleClearConversation}
-                  disabled={turns.length === 0 || chatMutation.isPending}
+                  disabled={
+                    turns.length === 0 ||
+                    chatMutation.isPending ||
+                    clearConversationMutation.isPending
+                  }
                   className="ui-button inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Clear
+                  {clearConversationMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  {activeConversationId && isAuthenticated ? 'Delete' : 'Clear'}
                 </button>
               </div>
             </div>
@@ -449,46 +484,34 @@ export function ChatPage() {
                         )}
 
                         {turn.role === "assistant" &&
-                        (turn.model || turn.agent) ? (
+                        (turn.agent || turn.sources?.length) ? (
                           <div className="mt-3 border-t border-white/10 pt-2 text-xs text-slate-500">
-                            <p>
-                              {formatAgentLabel(turn.agent) ? (
-                                <span className="text-violet-300">
-                                  {formatAgentLabel(turn.agent)}
-                                </span>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                              <p>
+                                {formatAgentLabel(turn.agent) ? (
+                                  <span className="text-violet-300">
+                                    {formatAgentLabel(turn.agent)}
+                                  </span>
+                                ) : null}
+                                {formatAgentLabel(turn.agent) && turn.sources?.length
+                                  ? " · "
+                                  : null}
+                                {turn.sources?.length
+                                  ? `${turn.sources.length} sources`
+                                  : null}
+                              </p>
+                              {turn.sources?.length && pairedQuestion ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleViewSources(turn, pairedQuestion)
+                                  }
+                                  className="ui-button font-medium text-brand-200 hover:text-brand-100"
+                                >
+                                  View sources
+                                </button>
                               ) : null}
-                              {formatAgentLabel(turn.agent) && turn.model
-                                ? " · "
-                                : null}
-                              {turn.model ? `Model: ${turn.model}` : null}
-                              {turn.route ? ` · route: ${turn.route}` : ""}
-                              {turn.retrievalMode
-                                ? ` · ${turn.retrievalMode} search`
-                                : ""}
-                              {turn.sources?.length
-                                ? ` · ${turn.sources.length} sources`
-                                : ""}
-                              {turn.cacheHit ? (
-                                <span className="text-emerald-300">
-                                  {" "}
-                                  · cached
-                                  {turn.cacheSimilarity != null
-                                    ? ` (${(turn.cacheSimilarity * 100).toFixed(0)}% similar)`
-                                    : ""}
-                                </span>
-                              ) : null}
-                            </p>
-                            {turn.sources?.length && pairedQuestion ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleViewSources(turn, pairedQuestion)
-                                }
-                                className="ui-button mt-1 font-medium text-brand-200 hover:text-brand-100"
-                              >
-                                View sources
-                              </button>
-                            ) : null}
+                            </div>
                           </div>
                         ) : null}
                       </div>

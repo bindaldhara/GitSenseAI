@@ -43,7 +43,6 @@ def architecture_agent_node(state: AgentState) -> AgentState:
             payload = generate_repository_diagram(
                 state["repository_id"],
                 message=state["message"],
-                diagram_type="auto",
             )
         except Exception:
             logger.warning(

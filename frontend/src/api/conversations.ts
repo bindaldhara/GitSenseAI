@@ -26,6 +26,14 @@ export async function createConversation(repositoryId: number, title?: string) {
   }
 }
 
+export async function deleteConversation(conversationId: number) {
+  try {
+    await apiClient.delete(`/api/v1/conversations/${conversationId}`)
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Failed to delete conversation'))
+  }
+}
+
 export async function fetchConversationMessages(conversationId: number) {
   try {
     const { data } = await apiClient.get<{

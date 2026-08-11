@@ -1,4 +1,4 @@
-"""Build Mermaid diagram source from repository graph data."""
+"""Build Mermaid diagram source from repository graph import edges."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ _MAX_LABEL_LEN = 32
 
 
 def _display_label(label: str) -> str:
-    """Shorten file paths and module names for readable diagram nodes."""
     compact = label.strip().replace("\\", "/")
     if "/" in compact:
         parts = [part for part in compact.split("/") if part]
@@ -43,6 +42,16 @@ def _register_node(node_map: dict[str, str], label: str) -> str | None:
     return node_map[safe]
 
 
+def _path_matches(source_file: str, path_filter: str) -> bool:
+    file_norm = source_file.replace("\\", "/").lower()
+    filter_norm = path_filter.replace("\\", "/").lower()
+    if filter_norm in file_norm:
+        return True
+    file_base = file_norm.rsplit("/", 1)[-1]
+    filter_base = filter_norm.rsplit("/", 1)[-1]
+    return file_base == filter_base
+
+
 def _build_flowchart(edges: list[tuple[str, str]]) -> str | None:
     node_map: dict[str, str] = {}
     edge_lines: list[str] = []
@@ -69,63 +78,8 @@ def _build_flowchart(edges: list[tuple[str, str]]) -> str | None:
     return "\n".join(lines)
 
 
-def build_import_dependency_mermaid(repository_id: int, *, limit: int = 50) -> str | None:
-    """Return a flowchart of file → module import edges from the knowledge graph."""
-    rows = list_import_dependencies(repository_id, limit=limit)
-    edges: list[tuple[str, str]] = []
-
-    for row in rows:
-        source_file = row.get("source_file") or row.get("source_key") or ""
-        target = row.get("target_label") or row.get("target_key") or ""
-        if source_file and target:
-            edges.append((source_file, target))
-
-    return _build_flowchart(edges)
-
-
-def build_file_import_mermaid(
-    repository_id: int,
-    *,
-    file_hint: str,
-    limit: int = 80,
-) -> str | None:
-    """Flowchart of imports for a specific file (case-insensitive path match)."""
-    rows = list_import_dependencies(
-        repository_id,
-        limit=limit,
-        source_path_filter=file_hint,
-    )
-    edges: list[tuple[str, str]] = []
-
-    for row in rows:
-        source_file = row.get("source_file") or ""
-        target = row.get("target_label") or ""
-        if source_file and target and _path_matches(source_file, file_hint):
-            edges.append((source_file, target))
-
-    return _build_flowchart(edges)
-
-
-def _is_local_module_target(label: str) -> bool:
-    compact = label.strip()
-    if compact.startswith((".", "@/", "src/", "/")):
-        return True
-    if "/" in compact and not compact.startswith(("http://", "https://")):
-        return True
-    return False
-
-
-def _path_matches(source_file: str, path_filter: str) -> bool:
-    file_norm = source_file.replace("\\", "/").lower()
-    filter_norm = path_filter.replace("\\", "/").lower()
-    if filter_norm in file_norm:
-        return True
-    file_base = file_norm.rsplit("/", 1)[-1]
-    filter_base = filter_norm.rsplit("/", 1)[-1]
-    return file_base == filter_base
-
-
 def infer_path_filter_from_question(message: str) -> str | None:
+    """Extract a file or folder hint from the user question (optional focus)."""
     file_match = re.search(
         r"(?:[`'\"]?)(?:\./)?((?:[\w.-]+/)*[\w.-]+\.(?:jsx?|tsx?|vue))(?:[`'\"]?)",
         message,
@@ -144,41 +98,23 @@ def infer_path_filter_from_question(message: str) -> str | None:
     return None
 
 
-def build_local_import_mermaid(
+def build_import_mermaid(
     repository_id: int,
     *,
     path_filter: str | None = None,
-    limit: int = 60,
+    limit: int = 50,
 ) -> str | None:
-    """Flowchart of file → local module imports (component wiring), optionally filtered by path."""
-    rows = list_import_dependencies(repository_id, limit=limit)
+    """Build a flowchart from file → module import edges (optionally filtered by path)."""
+    rows = list_import_dependencies(
+        repository_id,
+        limit=limit,
+        source_path_filter=path_filter,
+    )
     edges: list[tuple[str, str]] = []
 
     for row in rows:
-        source_file = row.get("source_file") or ""
-        target = row.get("target_label") or ""
-        if not source_file or not target or not _is_local_module_target(target):
-            continue
-        if path_filter and not _path_matches(source_file, path_filter):
-            continue
-        edges.append((source_file, target))
-
-    return _build_flowchart(edges)
-
-
-def build_filtered_import_mermaid(
-    repository_id: int,
-    *,
-    path_filter: str | None = None,
-    limit: int = 40,
-) -> str | None:
-    """Flowchart of file → module imports for files matching path_filter (includes npm packages)."""
-    rows = list_import_dependencies(repository_id, limit=limit)
-    edges: list[tuple[str, str]] = []
-
-    for row in rows:
-        source_file = row.get("source_file") or ""
-        target = row.get("target_label") or ""
+        source_file = row.get("source_file") or row.get("source_key") or ""
+        target = row.get("target_label") or row.get("target_key") or ""
         if not source_file or not target:
             continue
         if path_filter and not _path_matches(source_file, path_filter):

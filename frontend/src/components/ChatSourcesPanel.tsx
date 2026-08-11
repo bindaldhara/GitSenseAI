@@ -75,7 +75,7 @@ export function ChatSourcesPanel({
     })
   }
 
-  if (isLoading) {
+  if (isLoading && sources.length === 0) {
     return (
       <PanelShell panelRef={panelRef} highlighted={highlighted}>
         <h3 className="section-eyebrow mb-3">Sources</h3>
@@ -100,9 +100,13 @@ export function ChatSourcesPanel({
   return (
     <PanelShell panelRef={panelRef} highlighted={highlighted}>
       <h3 className="section-eyebrow mb-3">Sources</h3>
-      <p className="mb-4 text-xs text-slate-500">
-        Code chunks retrieved to ground the answer.
-      </p>
+      {isLoading ? (
+        <p className="mb-4 text-xs text-slate-400">Retrieving sources for your latest question…</p>
+      ) : (
+        <p className="mb-4 text-xs text-slate-500">
+          Code chunks retrieved to ground the answer.
+        </p>
+      )}
 
       {question ? (
         <p className="mb-4 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-xs leading-relaxed text-slate-300">

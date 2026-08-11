@@ -1,13 +1,11 @@
 export type DiagramRequest = {
   message: string
-  diagram_type?: 'auto' | 'dependency' | 'architecture'
   limit?: number
 }
 
 export type DiagramResponse = {
   repository_id: number
   question: string
-  diagram_type: 'dependency' | 'architecture'
   title: string
   description: string
   mermaid: string

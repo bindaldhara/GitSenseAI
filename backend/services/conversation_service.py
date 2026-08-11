@@ -80,6 +80,18 @@ def get_conversation(conversation_id: int, user_id: int) -> dict:
         return row
 
 
+def delete_conversation(conversation_id: int, user_id: int) -> None:
+    get_conversation(conversation_id, user_id)
+    with db_cursor(commit=True) as cursor:
+        cursor.execute(
+            """
+            DELETE FROM conversations
+            WHERE id = %s AND user_id = %s
+            """,
+            (conversation_id, user_id),
+        )
+
+
 def list_conversation_messages(conversation_id: int, user_id: int) -> list[dict]:
     get_conversation(conversation_id, user_id)
     with db_cursor() as cursor:
