@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
+from auth.dependencies import AuthenticatedUser, get_optional_user
+from config import settings
 from parsers import get_repository_parse_summary, get_repository_symbols
 from schemas.repository import (
     EmbeddingSummaryResponse,
@@ -21,14 +23,37 @@ router = APIRouter(prefix="/repositories", tags=["repositories"])
 
 
 @router.get("", response_model=RepositoryListResponse)
-def read_repositories() -> RepositoryListResponse:
-    repositories = [RepositoryResponse.model_validate(item) for item in list_repositories()]
+def read_repositories(
+    user: AuthenticatedUser | None = Depends(get_optional_user),
+) -> RepositoryListResponse:
+    if settings.auth_enabled and user is None:
+        repositories = [
+            RepositoryResponse.model_validate(item)
+            for item in list_repositories(public_only=True)
+        ]
+    else:
+        user_id = user.id if user and settings.auth_enabled else None
+        repositories = [
+            RepositoryResponse.model_validate(item)
+            for item in list_repositories(user_id=user_id)
+        ]
     return RepositoryListResponse(repositories=repositories)
 
 
 @router.post("", response_model=RepositoryResponse, status_code=status.HTTP_201_CREATED)
-def submit_repository(payload: RepositoryCreate) -> RepositoryResponse:
-    repository = create_repository_submission(str(payload.url))
+def submit_repository(
+    payload: RepositoryCreate,
+    user: AuthenticatedUser | None = Depends(get_optional_user),
+) -> RepositoryResponse:
+    if settings.auth_enabled and user is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to add repositories.",
+        )
+    user_id = user.id if user and settings.auth_enabled else None
+    repository = create_repository_submission(str(payload.url), user_id=user_id)
     return RepositoryResponse.model_validate(repository)
 
 

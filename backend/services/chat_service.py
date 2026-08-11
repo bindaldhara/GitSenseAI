@@ -14,8 +14,8 @@ from vector_store import get_embedding_summary
 from vector_store.embeddings import embed_texts
 
 
-def _validate_repository_ready(repository_id: int) -> dict:
-    repository = get_repository_by_id(repository_id)
+def _validate_repository_ready(repository_id: int, user_id: int | None = None) -> dict:
+    repository = get_repository_by_id(repository_id, user_id=user_id)
 
     if repository["status"] != "cloned":
         raise HTTPException(
@@ -44,9 +44,10 @@ def chat_with_repository(
     use_hybrid: bool | None = None,
     use_semantic_cache: bool | None = None,
     use_agents: bool | None = None,
+    user_id: int | None = None,
 ) -> dict:
     """Answer a question about an indexed repository using agents or direct RAG."""
-    repository = _validate_repository_ready(repository_id)
+    repository = _validate_repository_ready(repository_id, user_id=user_id)
     history = history or []
     agents_enabled = settings.agents_enabled if use_agents is None else use_agents
     cache_enabled = settings.semantic_cache_enabled if use_semantic_cache is None else use_semantic_cache

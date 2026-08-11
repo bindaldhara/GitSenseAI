@@ -120,6 +120,58 @@ CREATE INDEX IF NOT EXISTS idx_repository_graph_edges_repository_id
 ON repository_graph_edges (repository_id);
 """
 
+CREATE_USERS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
+
+CREATE_CONVERSATIONS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS conversations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    repository_id INTEGER NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT 'New conversation',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
+
+CREATE_CONVERSATION_MESSAGES_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS conversation_messages (
+    id SERIAL PRIMARY KEY,
+    conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+"""
+
+CREATE_CONVERSATIONS_USER_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations (user_id);
+"""
+
+CREATE_CONVERSATIONS_REPO_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_conversations_repository_id ON conversations (repository_id);
+"""
+
+CREATE_CONVERSATION_MESSAGES_CONV_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_conversation_id
+ON conversation_messages (conversation_id);
+"""
+
+ALTER_REPOSITORIES_USER_ID_SQL = """
+ALTER TABLE repositories ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+"""
+
+CREATE_REPOSITORIES_USER_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_repositories_user_id ON repositories (user_id);
+"""
+
 
 def get_connection() -> Connection:
     return connect(settings.database_url, row_factory=dict_row)
@@ -148,3 +200,11 @@ def initialize_database() -> None:
         cursor.execute(CREATE_REPOSITORY_GRAPH_EDGES_TABLE_SQL)
         cursor.execute(CREATE_REPOSITORY_GRAPH_NODES_INDEX_SQL)
         cursor.execute(CREATE_REPOSITORY_GRAPH_EDGES_INDEX_SQL)
+        cursor.execute(CREATE_USERS_TABLE_SQL)
+        cursor.execute(ALTER_REPOSITORIES_USER_ID_SQL)
+        cursor.execute(CREATE_REPOSITORIES_USER_INDEX_SQL)
+        cursor.execute(CREATE_CONVERSATIONS_TABLE_SQL)
+        cursor.execute(CREATE_CONVERSATION_MESSAGES_TABLE_SQL)
+        cursor.execute(CREATE_CONVERSATIONS_USER_INDEX_SQL)
+        cursor.execute(CREATE_CONVERSATIONS_REPO_INDEX_SQL)
+        cursor.execute(CREATE_CONVERSATION_MESSAGES_CONV_INDEX_SQL)

@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, Loader2, MessageSquare, Send, Trash2, User } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { sendChatMessage } from '@/api/chat'
+import { fetchConversationMessages, fetchConversations } from '@/api/conversations'
 import { fetchRepositories } from '@/api/repositories'
 import { ChatSourcesPanel } from '@/components/ChatSourcesPanel'
 import { MarkdownContent } from '@/components/MarkdownContent'
 import { PageHeader } from '@/components/PageHeader'
-import type { ConversationTurn } from '@/types/chat'
+import { ResizableColumns } from '@/components/ResizableColumns'
+import { useAuth } from '@/context/AuthContext'
+import type { ConversationTurn, RetrievedSource } from '@/types/chat'
 
 const EXAMPLE_QUESTIONS = [
   'What is the main entry point of this repository?',
@@ -30,15 +33,23 @@ function formatAgentLabel(agent?: string | null) {
   return agent
 }
 
+const MIN_CONTROLS_HEIGHT = 96
+const MAX_CONTROLS_HEIGHT = 260
+const DEFAULT_CONTROLS_HEIGHT = 148
+
 export function ChatPage() {
+  const { isAuthenticated } = useAuth()
+  const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedRepositoryId, setSelectedRepositoryId] = useState<number | null>(null)
+  const [activeConversationId, setActiveConversationId] = useState<number | null>(null)
   const [message, setMessage] = useState('')
   const [turns, setTurns] = useState<ConversationTurn[]>([])
   const [activeSources, setActiveSources] = useState<ConversationTurn['sources']>([])
   const [activeSourcesQuestion, setActiveSourcesQuestion] = useState<string>()
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
   const [sourcesHighlightPulse, setSourcesHighlightPulse] = useState(0)
+  const [controlsHeight, setControlsHeight] = useState(DEFAULT_CONTROLS_HEIGHT)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const { data: repositoriesData, isLoading: repositoriesLoading } = useQuery({
@@ -51,7 +62,11 @@ export function ChatPage() {
     [repositoriesData],
   )
 
-  const selectedRepository = readyRepositories.find((repo) => repo.id === selectedRepositoryId)
+  const { data: savedConversations = [] } = useQuery({
+    queryKey: ['conversations', selectedRepositoryId],
+    queryFn: () => fetchConversations(selectedRepositoryId!),
+    enabled: isAuthenticated && selectedRepositoryId !== null,
+  })
 
   useEffect(() => {
     if (readyRepositories.length === 0) {
@@ -80,15 +95,18 @@ export function ChatPage() {
         throw new Error('Select a repository before chatting.')
       }
 
-      const history = turns.map((turn) => ({
-        role: turn.role,
-        content: turn.content,
-      }))
+      const history = activeConversationId
+        ? []
+        : turns.map((turn) => ({
+            role: turn.role,
+            content: turn.content,
+          }))
 
       return sendChatMessage(selectedRepositoryId, {
         message: question,
         top_k: 5,
         history,
+        conversation_id: activeConversationId ?? undefined,
       })
     },
     onMutate: (question) => {
@@ -121,6 +139,10 @@ export function ChatPage() {
       setActiveSources(response.sources)
       setActiveSourcesQuestion(question)
       setSelectedTurnId(assistantTurn.id)
+      if (response.conversation_id) {
+        setActiveConversationId(response.conversation_id)
+        void queryClient.invalidateQueries({ queryKey: ['conversations', selectedRepositoryId] })
+      }
     },
     onError: (error: Error) => {
       const errorTurn: ConversationTurn = {
@@ -138,6 +160,7 @@ export function ChatPage() {
   function handleRepositoryChange(repositoryId: number) {
     setSelectedRepositoryId(repositoryId)
     setSearchParams({ repository: String(repositoryId) })
+    setActiveConversationId(null)
     setTurns([])
     setActiveSources([])
     setActiveSourcesQuestion(undefined)
@@ -146,6 +169,7 @@ export function ChatPage() {
   }
 
   function handleClearConversation() {
+    setActiveConversationId(null)
     setTurns([])
     setActiveSources([])
     setActiveSourcesQuestion(undefined)
@@ -161,6 +185,71 @@ export function ChatPage() {
     setActiveSourcesQuestion(question)
     setSelectedTurnId(turn.id)
     setSourcesHighlightPulse((current) => current + 1)
+  }
+
+  async function handleConversationSelect(value: string) {
+    if (value === 'new') {
+      handleClearConversation()
+      return
+    }
+    const conversationId = Number(value)
+    if (Number.isNaN(conversationId)) return
+    setActiveConversationId(conversationId)
+    try {
+      const messages = await fetchConversationMessages(conversationId)
+      const loadedTurns: ConversationTurn[] = messages.map((item) => {
+        const meta = item.metadata as {
+          sources?: RetrievedSource[]
+          model?: string
+          retrieval_mode?: 'hybrid' | 'vector'
+          route?: ConversationTurn['route']
+          agent?: ConversationTurn['agent']
+          cache_hit?: boolean
+        }
+        return {
+          id: createTurnId(),
+          role: item.role,
+          content: item.content,
+          sources: meta.sources,
+          model: meta.model,
+          retrievalMode: meta.retrieval_mode,
+          route: meta.route,
+          agent: meta.agent,
+          cacheHit: meta.cache_hit,
+        }
+      })
+      setTurns(loadedTurns)
+      setActiveSources([])
+      setActiveSourcesQuestion(undefined)
+      setSelectedTurnId(null)
+    } catch {
+      setTurns([])
+    }
+  }
+
+  function handleControlsResizeStart(event: React.MouseEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = controlsHeight
+
+    function onMouseMove(moveEvent: MouseEvent) {
+      const delta = moveEvent.clientY - startY
+      setControlsHeight(
+        Math.min(MAX_CONTROLS_HEIGHT, Math.max(MIN_CONTROLS_HEIGHT, startHeight + delta)),
+      )
+    }
+
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.body.style.cursor = 'row-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -188,12 +277,15 @@ export function ChatPage() {
       />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
-        <section className="glass-panel animate-fade-up animate-delay-2 flex h-160 flex-col overflow-hidden rounded-2xl">
-          <div className="border-b border-white/10 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <section className="glass-panel animate-fade-up animate-delay-2 flex min-h-[36rem] h-[calc(100vh-11rem)] max-h-[44rem] flex-col overflow-hidden rounded-2xl">
+          <div
+            className="shrink-0 overflow-y-auto px-4 py-3"
+            style={{ height: controlsHeight }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-white">
-                <MessageSquare className="h-5 w-5 text-brand-300" />
-                <h3 className="text-lg font-semibold">Chat</h3>
+                <MessageSquare className="h-4 w-4 text-brand-300" />
+                <h3 className="text-base font-semibold">Chat</h3>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -201,7 +293,7 @@ export function ChatPage() {
                   type="button"
                   onClick={handleClearConversation}
                   disabled={turns.length === 0 || chatMutation.isPending}
-                  className="ui-button inline-flex items-center gap-1.5 rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-button inline-flex items-center gap-1.5 rounded-md border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear
@@ -209,50 +301,81 @@ export function ChatPage() {
               </div>
             </div>
 
-            <div className="mt-4">
-              <label
-                htmlFor="chat-repository"
-                className="mb-2 block text-sm font-medium text-slate-200"
-              >
-                Repository
-              </label>
-              {repositoriesLoading ? (
-                <div className="skeleton h-11 rounded-lg bg-white/10" />
-              ) : readyRepositories.length > 0 ? (
-                <select
-                  id="chat-repository"
-                  value={selectedRepositoryId ?? ""}
-                  onChange={(event) =>
-                    handleRepositoryChange(Number(event.target.value))
-                  }
-                  className="input-field ui-button"
-                >
-                  {readyRepositories.map((repository) => (
-                    <option key={repository.id} value={repository.id}>
-                      {repository.full_name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  No indexed repositories yet.{" "}
-                  <Link to="/repositories" className="font-medium underline">
-                    Submit and index a repository
-                  </Link>{" "}
-                  first, then come back to chat.
+            <ResizableColumns
+              className="mt-2"
+              left={
+                <div>
+                  <label
+                    htmlFor="chat-repository"
+                    className="mb-1 block text-xs font-medium text-slate-400"
+                  >
+                    Repository
+                  </label>
+                  {repositoriesLoading ? (
+                    <div className="skeleton h-9 rounded-lg bg-white/10" />
+                  ) : readyRepositories.length > 0 ? (
+                    <select
+                      id="chat-repository"
+                      value={selectedRepositoryId ?? ""}
+                      onChange={(event) =>
+                        handleRepositoryChange(Number(event.target.value))
+                      }
+                      className="input-field ui-button py-2 text-sm"
+                    >
+                      {readyRepositories.map((repository) => (
+                        <option key={repository.id} value={repository.id}>
+                          {repository.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                      No indexed repositories yet.{" "}
+                      <Link to="/repositories" className="font-medium underline">
+                        Submit and index a repository
+                      </Link>{" "}
+                      first, then come back to chat.
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {selectedRepository ? (
-              <p className="mt-3 text-xs text-slate-500">
-                Chatting with{" "}
-                <span className="font-medium text-slate-300">
-                  {selectedRepository.full_name}
-                </span>
-              </p>
-            ) : null}
+              }
+              right={
+                isAuthenticated && selectedRepositoryId
+                  ? (
+                    <div>
+                      <label
+                        htmlFor="chat-conversation"
+                        className="mb-1 block text-xs font-medium text-slate-400"
+                      >
+                        Saved conversation
+                      </label>
+                      <select
+                        id="chat-conversation"
+                        value={activeConversationId ?? 'new'}
+                        onChange={(event) => handleConversationSelect(event.target.value)}
+                        className="input-field ui-button py-2 text-sm"
+                      >
+                        <option value="new">New conversation</option>
+                        {savedConversations.map((conversation) => (
+                          <option key={conversation.id} value={conversation.id}>
+                            {conversation.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                  : null
+              }
+            />
           </div>
+
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Resize chat controls"
+            onMouseDown={handleControlsResizeStart}
+            className="chat-row-resize-handle shrink-0"
+          />
 
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
             {turns.length === 0 ? (
@@ -442,7 +565,7 @@ export function ChatPage() {
           </form>
         </section>
 
-        <aside className="animate-fade-up animate-delay-3 max-h-160 w-full space-y-4 self-start overflow-y-auto">
+        <aside className="animate-fade-up animate-delay-3 max-h-[min(44rem,calc(100vh-11rem))] w-full space-y-4 self-start overflow-y-auto">
           <ChatSourcesPanel
             sources={activeSources ?? []}
             question={activeSourcesQuestion}

@@ -61,23 +61,62 @@ def parse_github_repository_url(raw_url: str) -> ParsedRepository:
     return ParsedRepository(url=normalized_url, full_name=full_name, clone_path=clone_path)
 
 
-def list_repositories() -> list[dict]:
+def list_repositories(user_id: int | None = None, *, public_only: bool = False) -> list[dict]:
     with db_cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT id, url, full_name, provider, status, clone_path, default_branch, created_at, updated_at
-            FROM repositories
-            ORDER BY created_at DESC
-            """
-        )
+        if public_only:
+            cursor.execute(
+                """
+                SELECT id, url, full_name, provider, status, clone_path, default_branch,
+                       user_id, created_at, updated_at
+                FROM repositories
+                WHERE user_id IS NULL
+                ORDER BY created_at DESC
+                """
+            )
+        elif user_id is None:
+            cursor.execute(
+                """
+                SELECT id, url, full_name, provider, status, clone_path, default_branch,
+                       user_id, created_at, updated_at
+                FROM repositories
+                ORDER BY created_at DESC
+                """
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT id, url, full_name, provider, status, clone_path, default_branch,
+                       user_id, created_at, updated_at
+                FROM repositories
+                WHERE user_id IS NULL OR user_id = %s
+                ORDER BY created_at DESC
+                """,
+                (user_id,),
+            )
         return list(cursor.fetchall())
 
 
-def get_repository_by_id(repository_id: int) -> dict:
+def user_can_access_repository(repository_id: int, user_id: int | None) -> bool:
+    if user_id is None:
+        return True
+    with db_cursor() as cursor:
+        cursor.execute(
+            "SELECT user_id FROM repositories WHERE id = %s",
+            (repository_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return False
+        owner_id = row.get("user_id")
+        return owner_id is None or owner_id == user_id
+
+
+def get_repository_by_id(repository_id: int, user_id: int | None = None) -> dict:
     with db_cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, url, full_name, provider, status, clone_path, default_branch, created_at, updated_at
+            SELECT id, url, full_name, provider, status, clone_path, default_branch,
+                   user_id, created_at, updated_at
             FROM repositories
             WHERE id = %s
             """,
@@ -89,10 +128,15 @@ def get_repository_by_id(repository_id: int) -> dict:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Repository with id {repository_id} was not found.",
             )
+        if user_id is not None and row.get("user_id") is not None and row["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this repository.",
+            )
         return row
 
 
-def create_repository_submission(raw_url: str) -> dict:
+def create_repository_submission(raw_url: str, user_id: int | None = None) -> dict:
     repository = parse_github_repository_url(raw_url)
 
     with db_cursor() as cursor:
@@ -112,7 +156,7 @@ def create_repository_submission(raw_url: str) -> dict:
 
     ensure_clone_parent_directory(repository.clone_path)
 
-    created_record = insert_repository_record(repository)
+    created_record = insert_repository_record(repository, user_id=user_id)
     try:
         default_branch = clone_repository(repository)
     except HTTPException as exc:
@@ -226,13 +270,14 @@ def _parse_and_finalize(
     )
 
 
-def insert_repository_record(repository: ParsedRepository) -> dict:
+def insert_repository_record(repository: ParsedRepository, user_id: int | None = None) -> dict:
     with db_cursor(commit=True) as cursor:
         cursor.execute(
             """
-            INSERT INTO repositories (url, full_name, clone_path, status, provider)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING id, url, full_name, provider, status, clone_path, default_branch, created_at, updated_at
+            INSERT INTO repositories (url, full_name, clone_path, status, provider, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id, url, full_name, provider, status, clone_path, default_branch,
+                      user_id, created_at, updated_at
             """,
             (
                 repository.url,
@@ -240,6 +285,7 @@ def insert_repository_record(repository: ParsedRepository) -> dict:
                 str(repository.clone_path),
                 "cloning",
                 repository.provider,
+                user_id,
             ),
         )
         row = cursor.fetchone()
@@ -265,7 +311,8 @@ def mark_repository_status(
                 default_branch = COALESCE(%s, default_branch),
                 updated_at = NOW()
             WHERE id = %s
-            RETURNING id, url, full_name, provider, status, clone_path, default_branch, created_at, updated_at
+            RETURNING id, url, full_name, provider, status, clone_path, default_branch,
+                      user_id, created_at, updated_at
             """,
             (status_value, default_branch, repository_id),
         )

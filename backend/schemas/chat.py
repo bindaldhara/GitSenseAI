@@ -18,7 +18,7 @@ class ChatRequest(BaseModel):
     history: list[ChatMessage] = Field(
         default_factory=list,
         max_length=20,
-        description="Optional prior turns for multi-turn chat (client-managed for now)",
+        description="Optional prior turns when conversation_id is not used.",
     )
     use_semantic_cache: bool | None = Field(
         default=None,
@@ -27,6 +27,10 @@ class ChatRequest(BaseModel):
     use_agents: bool | None = Field(
         default=None,
         description="Route chat through LangGraph agents. Defaults to server AGENTS_ENABLED setting.",
+    )
+    conversation_id: int | None = Field(
+        default=None,
+        description="Persist turns to this conversation (requires authentication).",
     )
 
 
@@ -52,3 +56,4 @@ class ChatResponse(BaseModel):
     route: Literal["code", "documentation", "architecture"] | None = None
     agent: Literal["code", "documentation", "architecture"] | None = None
     agent_steps: list[str] = Field(default_factory=list)
+    conversation_id: int | None = None

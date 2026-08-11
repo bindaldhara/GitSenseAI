@@ -9,6 +9,7 @@ export type ChatRequest = {
   message: string
   top_k?: number
   history?: ChatMessage[]
+  conversation_id?: number
 }
 
 export type RetrievedSource = {
@@ -35,6 +36,7 @@ export type ChatResponse = {
   route?: AgentRoute | null
   agent?: AgentRoute | null
   agent_steps?: string[]
+  conversation_id?: number | null
 }
 
 export type ConversationTurn = {

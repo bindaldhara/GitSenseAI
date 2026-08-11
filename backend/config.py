@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     semantic_cache_max_entries_per_repo: int = 100
     agents_enabled: bool = True
     graph_rag_enabled: bool = True
+    auth_enabled: bool = True
+    jwt_secret: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 7
 
     @computed_field
     @property

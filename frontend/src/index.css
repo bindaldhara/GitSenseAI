@@ -408,6 +408,58 @@ body {
   box-shadow: 0 0 0 3px rgb(99 102 241 / 0.18);
 }
 
+.chat-col-resize-handle {
+  width: 10px;
+  margin: 0 1px;
+  cursor: col-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+
+.chat-col-resize-handle:hover,
+.chat-col-resize-handle:active {
+  background: rgb(99 102 241 / 0.12);
+}
+
+.chat-col-resize-handle::after {
+  content: '';
+  width: 2px;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.22);
+}
+
+.chat-col-resize-handle-inline {
+  width: 8px;
+  margin: 0;
+  border-left: 1px solid rgb(255 255 255 / 0.1);
+  border-right: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.chat-col-resize-handle-inline::after {
+  height: 1.25rem;
+}
+
+.chat-row-resize-handle {
+  height: 10px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  touch-action: none;
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.03);
+  transition: background-color 0.15s ease;
+}
+
+.chat-row-resize-handle:hover,
+.chat-row-resize-handle:active {
+  background: rgb(99 102 241 / 0.14);
+}
+
 .chat-prose {
   color: rgb(226 232 240);
 }

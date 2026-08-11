@@ -15,6 +15,7 @@ class RepositoryResponse(BaseModel):
     status: str
     clone_path: str
     default_branch: str | None
+    user_id: int | None = None
     created_at: datetime
     updated_at: datetime
 

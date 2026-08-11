@@ -1,11 +1,14 @@
-import { Home, MessageSquare, FolderGit2 } from 'lucide-react'
-import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
+import { FolderGit2, Home, LogIn, LogOut, MessageSquare, Search } from 'lucide-react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+
+import { useAuth } from '@/context/AuthContext'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   ['nav-pill ui-button inline-flex items-center gap-2', isActive ? 'nav-pill-active' : ''].join(' ')
 
 export function AppLayout() {
   const location = useLocation()
+  const { isAuthenticated, user, logout, isLoading } = useAuth()
 
   return (
     <div className="app-shell min-h-screen">
@@ -34,7 +37,32 @@ export function AppLayout() {
               <MessageSquare className="h-4 w-4" />
               Chat
             </NavLink>
+            <NavLink to="/search" className={navLinkClass}>
+              <Search className="h-4 w-4" />
+              Search
+            </NavLink>
           </nav>
+
+          <div className="flex items-center gap-2">
+            {isLoading ? null : isAuthenticated ? (
+              <>
+                <span className="hidden text-xs text-slate-400 sm:inline">{user?.email}</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="ui-button inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Log out
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className={navLinkClass}>
+                <LogIn className="h-4 w-4" />
+                Sign in
+              </NavLink>
+            )}
+          </div>
         </div>
       </header>
 
