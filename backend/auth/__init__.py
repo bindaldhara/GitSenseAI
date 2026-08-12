@@ -1,4 +1,4 @@
-"""JWT authentication helpers."""
+"""Supabase JWT authentication dependencies."""
 
 from auth.dependencies import AuthenticatedUser, get_optional_user, require_user
 

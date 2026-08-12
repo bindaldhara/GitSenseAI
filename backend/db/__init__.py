@@ -123,10 +123,30 @@ ON repository_graph_edges (repository_id);
 CREATE_USERS_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
+    supabase_id UUID UNIQUE,
     email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+"""
+
+ALTER_USERS_SUPABASE_SQL = """
+ALTER TABLE users ADD COLUMN IF NOT EXISTS supabase_id UUID;
+"""
+
+ALTER_USERS_PASSWORD_NULLABLE_SQL = """
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'password_hash'
+    ) THEN
+        ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+    END IF;
+END $$;
+"""
+
+CREATE_USERS_SUPABASE_INDEX_SQL = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_supabase_id ON users (supabase_id);
 """
 
 CREATE_CONVERSATIONS_TABLE_SQL = """
@@ -201,6 +221,9 @@ def initialize_database() -> None:
         cursor.execute(CREATE_REPOSITORY_GRAPH_NODES_INDEX_SQL)
         cursor.execute(CREATE_REPOSITORY_GRAPH_EDGES_INDEX_SQL)
         cursor.execute(CREATE_USERS_TABLE_SQL)
+        cursor.execute(ALTER_USERS_SUPABASE_SQL)
+        cursor.execute(ALTER_USERS_PASSWORD_NULLABLE_SQL)
+        cursor.execute(CREATE_USERS_SUPABASE_INDEX_SQL)
         cursor.execute(ALTER_REPOSITORIES_USER_ID_SQL)
         cursor.execute(CREATE_REPOSITORIES_USER_INDEX_SQL)
         cursor.execute(CREATE_CONVERSATIONS_TABLE_SQL)

@@ -1,31 +1,10 @@
 from fastapi import APIRouter, Depends
 
 from auth.dependencies import AuthenticatedUser, require_user
-from auth.security import create_access_token
-from schemas.auth import AuthTokenResponse, LoginRequest, RegisterRequest, UserResponse
-from services.user_service import authenticate_user, get_user_by_id, register_user
+from schemas.auth import UserResponse
+from services.user_service import get_user_by_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-@router.post("/register", response_model=AuthTokenResponse, status_code=201)
-def register(payload: RegisterRequest) -> AuthTokenResponse:
-    user = register_user(payload.email, payload.password)
-    token = create_access_token(user["id"], user["email"])
-    return AuthTokenResponse(
-        access_token=token,
-        user=UserResponse.model_validate(user),
-    )
-
-
-@router.post("/login", response_model=AuthTokenResponse)
-def login(payload: LoginRequest) -> AuthTokenResponse:
-    user = authenticate_user(payload.email, payload.password)
-    token = create_access_token(user["id"], user["email"])
-    return AuthTokenResponse(
-        access_token=token,
-        user=UserResponse.model_validate(user),
-    )
 
 
 @router.get("/me", response_model=UserResponse)

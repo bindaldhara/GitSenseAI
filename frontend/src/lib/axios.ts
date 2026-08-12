@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 
-import { getStoredToken } from '@/lib/authStorage'
+import { getAccessToken } from '@/lib/supabase'
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -11,8 +11,8 @@ export const apiClient = axios.create({
   },
 })
 
-apiClient.interceptors.request.use((config) => {
-  const token = getStoredToken()
+apiClient.interceptors.request.use(async (config) => {
+  const token = await getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

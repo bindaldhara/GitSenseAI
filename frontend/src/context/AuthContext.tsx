@@ -2,9 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { fetchCurrentUser, loginUser, logoutUser, registerUser } from '@/api/auth'
+import { fetchCurrentUser } from '@/api/auth'
 import { isAdminEmail } from '@/lib/admin'
-import { getStoredToken } from '@/lib/authStorage'
+import { supabase } from '@/lib/supabase'
 import type { User } from '@/types/auth'
 
 type AuthContextValue = {
@@ -14,10 +14,19 @@ type AuthContextValue = {
   isAdmin: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
-  logout: () => void
+  loginWithGoogle: () => Promise<void>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+async function loadAppUser(): Promise<User | null> {
+  const { data } = await supabase.auth.getSession()
+  if (!data.session) {
+    return null
+  }
+  return fetchCurrentUser()
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
@@ -25,33 +34,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const token = getStoredToken()
-    if (!token) {
-      setIsLoading(false)
-      return
-    }
+    let active = true
 
-    void fetchCurrentUser()
-      .then(setUser)
-      .catch(() => {
-        logoutUser()
-        setUser(null)
+    void loadAppUser()
+      .then((appUser) => {
+        if (active) {
+          setUser(appUser)
+        }
       })
-      .finally(() => setIsLoading(false))
+      .finally(() => {
+        if (active) {
+          setIsLoading(false)
+        }
+      })
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setUser(null)
+        return
+      }
+      void fetchCurrentUser()
+        .then((appUser) => setUser(appUser))
+        .catch(async () => {
+          await supabase.auth.signOut()
+          setUser(null)
+        })
+    })
+
+    return () => {
+      active = false
+      authListener.subscription.unsubscribe()
+    }
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await loginUser(email, password)
-    setUser(data.user)
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      throw error
+    }
+    if (!data.session) {
+      throw new Error('Sign-in succeeded but no session was returned.')
+    }
+    try {
+      const appUser = await fetchCurrentUser()
+      setUser(appUser)
+    } catch (meError) {
+      await supabase.auth.signOut()
+      throw meError instanceof Error
+        ? new Error(`Signed in with Supabase but the API rejected the token: ${meError.message}`)
+        : meError
+    }
   }, [])
 
   const register = useCallback(async (email: string, password: string) => {
-    const data = await registerUser(email, password)
-    setUser(data.user)
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      throw error
+    }
+    if (!data.session) {
+      throw new Error('Check your email to confirm your account, then sign in.')
+    }
+    const appUser = await fetchCurrentUser()
+    setUser(appUser)
   }, [])
 
-  const logout = useCallback(() => {
-    logoutUser()
+  const loginWithGoogle = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/login`,
+      },
+    })
+    if (error) {
+      throw error
+    }
+  }, [])
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut()
     setUser(null)
     navigate('/', { replace: true })
   }, [navigate])
@@ -64,9 +124,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: Boolean(user && isAdminEmail(user.email)),
       login,
       register,
+      loginWithGoogle,
       logout,
     }),
-    [user, isLoading, login, register, logout],
+    [user, isLoading, login, register, loginWithGoogle, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

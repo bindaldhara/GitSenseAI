@@ -55,7 +55,7 @@ export function AppLayout() {
                 <span className="hidden text-xs text-slate-400 sm:inline">{user?.email}</span>
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={() => void logout()}
                   className="ui-button inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
                 >
                   <LogOut className="h-3.5 w-3.5" />

@@ -40,9 +40,8 @@ class Settings(BaseSettings):
     graph_rag_enabled: bool = True
     auth_enabled: bool = True
     admin_email: str = "admin@gmail.com"
-    jwt_secret: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24 * 7
+    supabase_url: str
+    supabase_jwt_secret: str | None = None
 
     @computed_field
     @property

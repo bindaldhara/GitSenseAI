@@ -20,5 +20,5 @@ langchain-core
 langgraph
 rank-bm25
 PyJWT
-bcrypt
+cryptography
 email-validator

@@ -15,7 +15,7 @@ GitSense AI is a production-oriented platform for understanding large software r
 - **Mermaid diagrams**: Architecture and import-dependency diagrams generated from the repo graph or LLM fallback.
 - **Semantic cache**: Redis-backed cache for similar single-turn questions (with admin analytics).
 - **Multi-repo search**: Semantic search across all repositories accessible to the signed-in user.
-- **JWT authentication**: Register/login, saved conversations, conversation delete, repo ownership.
+- **Supabase authentication**: Sign up/sign in via Supabase, saved conversations, conversation delete, repo ownership.
 - **Admin console** (`admin@gmail.com`): Ops dashboard, retrieval lab, Graph RAG lab, cache analytics — platform-wide repo view with owner labels.
 - **Containerized stack**: Docker Compose for frontend, backend, Postgres, Redis, and Qdrant.
 
@@ -29,7 +29,7 @@ GitSense AI is a production-oriented platform for understanding large software r
 - **Parsing**: tree-sitter (Go, Python, JavaScript, TypeScript)
 - **Databases**: PostgreSQL (metadata, graph, users, conversations), Redis (cache), Qdrant (vectors)
 - **Infrastructure**: Docker, Docker Compose, Make
-- **Auth**: JWT (PyJWT), bcrypt password hashing
+- **Auth**: Supabase Auth (frontend) + JWT verification (backend)
 
 ## System Architecture
 
@@ -112,7 +112,7 @@ sequenceDiagram
 ├── backend/                 # FastAPI app, agents, RAG, parsers, vector store
 │   ├── api/routes/          # REST endpoints (chat, repos, auth, admin, …)
 │   ├── agents/              # LangGraph router + specialist agents
-│   ├── auth/                # JWT dependencies and security
+│   ├── auth/                # Supabase JWT verification
 │   ├── cache/               # Semantic cache + analytics
 │   ├── diagrams/            # Mermaid generation and validation
 │   ├── graph_rag/           # Graph build, store, retrieval
@@ -208,9 +208,11 @@ OLLAMA_MODEL=llama3.2
 # Auth
 AUTH_ENABLED=true
 ADMIN_EMAIL=admin@gmail.com
-JWT_SECRET=change-me-use-a-long-random-string
-JWT_ALGORITHM=HS256
-JWT_EXPIRE_MINUTES=10080
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_JWT_SECRET=your-supabase-jwt-secret
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 
 # Retrieval & agents
 HYBRID_SEARCH_ENABLED=true

@@ -1,32 +1,53 @@
-"""Password hashing and JWT helpers."""
+"""Supabase JWT verification (JWKS for asymmetric keys + optional legacy HS256)."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+import logging
+from functools import lru_cache
 
-import bcrypt
 import jwt
+from jwt import PyJWKClient
 
 from config import settings
 
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+logger = logging.getLogger(__name__)
 
 
-def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+@lru_cache(maxsize=1)
+def _jwks_client() -> PyJWKClient:
+    issuer = f"{settings.supabase_url.rstrip('/')}/auth/v1"
+    return PyJWKClient(f"{issuer}/.well-known/jwks.json", cache_keys=True)
 
 
-def create_access_token(user_id: int, email: str) -> str:
-    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
-    payload = {
-        "sub": str(user_id),
-        "email": email,
-        "exp": expire,
-    }
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+def decode_supabase_access_token(token: str) -> dict:
+    """Validate a Supabase-issued access token and return its payload."""
+    issuer = f"{settings.supabase_url.rstrip('/')}/auth/v1"
 
+    try:
+        signing_key = _jwks_client().get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=[signing_key.algorithm_name],
+            audience="authenticated",
+            issuer=issuer,
+        )
+    except jwt.PyJWTError as jwks_error:
+        if not settings.supabase_jwt_secret:
+            logger.warning("Supabase JWKS verification failed: %s", jwks_error)
+            raise
 
-def decode_access_token(token: str) -> dict:
-    return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        try:
+            return jwt.decode(
+                token,
+                settings.supabase_jwt_secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+                issuer=issuer,
+            )
+        except jwt.PyJWTError:
+            logger.warning(
+                "Supabase token verification failed (JWKS and legacy HS256): %s",
+                jwks_error,
+            )
+            raise

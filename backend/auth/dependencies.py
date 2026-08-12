@@ -9,9 +9,9 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from auth.security import decode_access_token
+from auth.security import decode_supabase_access_token
 from config import settings
-from services.user_service import get_user_by_id
+from services.user_service import sync_user_from_supabase
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -22,6 +22,19 @@ class AuthenticatedUser:
     email: str
 
 
+def _user_from_supabase_token(token: str) -> AuthenticatedUser | None:
+    try:
+        payload = decode_supabase_access_token(token)
+        supabase_id = str(payload["sub"])
+        email = payload.get("email")
+        if not email:
+            return None
+        row = sync_user_from_supabase(supabase_id, email)
+        return AuthenticatedUser(id=row["id"], email=row["email"])
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+        return None
+
+
 def get_optional_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> AuthenticatedUser | None:
@@ -29,17 +42,7 @@ def get_optional_user(
         return None
     if credentials is None or not credentials.credentials:
         return None
-
-    try:
-        payload = decode_access_token(credentials.credentials)
-        user_id = int(payload["sub"])
-    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
-        return None
-
-    row = get_user_by_id(user_id)
-    if row is None:
-        return None
-    return AuthenticatedUser(id=row["id"], email=row["email"])
+    return _user_from_supabase_token(credentials.credentials)
 
 
 def require_user(
@@ -70,7 +73,6 @@ def require_admin(
     return user
 
 
-# When auth is enabled, unauthenticated callers cannot scope repos to a user.
 def get_user_id_for_scope(user: AuthenticatedUser | None) -> int | None:
     if not settings.auth_enabled:
         return None

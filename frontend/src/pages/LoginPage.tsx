@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/context/AuthContext'
+import { GoogleSignInButton } from '@/components/GoogleSignInButton'
 import { PageHeader } from '@/components/PageHeader'
 import { isAdminEmail } from '@/lib/admin'
 
@@ -41,6 +42,13 @@ export function LoginPage() {
       />
       <form onSubmit={handleSubmit} className="ui-card space-y-4 rounded-2xl border border-white/10 p-6">
         {error ? <p className="text-sm text-red-300">{error}</p> : null}
+        <GoogleSignInButton />
+        <div className="relative py-1">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10" />
+          </div>
+          <p className="relative text-center text-xs text-slate-500">or sign in with email</p>
+        </div>
         <label className="block space-y-1">
           <span className="text-sm text-slate-300">Email</span>
           <input
