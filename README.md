@@ -270,8 +270,9 @@ make mcp-server
 
 | Tool | Description |
 |------|-------------|
-| `clone_repo(url)` | Clone, parse, and index a public GitHub repo |
+| `clone_repo(url, force_reindex)` | Clone, parse, and index a public GitHub repo (auto re-indexes if clone is missing) |
 | `generate_docs(repo_name, doc_kind)` | README / API / onboarding markdown via RAG (`repo_name` = `owner/repo`) |
+| `find_dead_code(repo_name, max_results)` | Report likely-unused functions, classes, and types for review |
 
 Cursor: copy `config/mcp.cursor.example.json` into your MCP settings and set absolute paths to `backend/.venv/bin/python` and the `backend` directory.
 

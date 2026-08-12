@@ -1,7 +1,7 @@
 """
 GitSense AI MCP server (Day 15).
 
-Exposes clone_repo, generate_docs, and run_tests for Cursor, Claude Desktop, and Codex.
+Exposes clone_repo, generate_docs, and find_dead_code for Cursor, Claude Desktop, and Codex.
 
 User scoping: MCP has no Supabase JWT. Pass optional owner_email (GitSense login email)
 to attach repos to that user; omit for public repos (visible to all logged-in users).
@@ -23,6 +23,7 @@ from mcp.server.fastmcp import FastMCP
 from db import initialize_database
 from tools.clone_repo import clone_repo as clone_repo_tool
 from tools.errors import ToolError
+from tools.find_dead_code import find_dead_code as find_dead_code_tool
 from tools.generate_docs import generate_docs as generate_docs_tool
 from tools.mcp_user import resolve_mcp_user_id
 from vector_store.qdrant_store import ensure_collection
@@ -44,11 +45,20 @@ def _tool_response(payload: dict) -> str:
 
 
 @mcp.tool()
-def clone_repo(url: str, owner_email: str | None = None) -> str:
-    """Clone a public GitHub repo, parse it, and index it. Optional owner_email scopes the repo to that GitSense user."""
+def clone_repo(
+    url: str,
+    owner_email: str | None = None,
+    force_reindex: bool = False,
+) -> str:
+    """Clone a public GitHub repo, parse it, and index it.
+
+    If the repo is already registered but the local clone is missing, it is
+    re-indexed automatically. Set force_reindex=true to refresh an existing clone.
+    Optional owner_email scopes the repo to that GitSense user.
+    """
     try:
         user_id = resolve_mcp_user_id(owner_email)
-        return _json_result(clone_repo_tool(url, user_id=user_id))
+        return _json_result(clone_repo_tool(url, user_id=user_id, force_reindex=force_reindex))
     except ToolError as exc:
         return _tool_response({"ok": False, "error": exc.message})
 
@@ -72,6 +82,32 @@ def generate_docs(
         return result["markdown"]
     except ToolError as exc:
         return _tool_response({"ok": False, "error": exc.message})
+
+
+@mcp.tool()
+def find_dead_code(
+    repo_name: str,
+    owner_email: str | None = None,
+    max_results: int = 100,
+) -> str:
+    """Find likely-unused functions, classes, and types in a cloned repository.
+
+    Results are static-analysis candidates only: review framework hooks, public
+    APIs, reflection, and configuration before deleting anything. repo_name is
+    owner/repo or a GitHub URL. Pass owner_email if the repository is user-owned.
+    """
+    try:
+        user_id = resolve_mcp_user_id(owner_email)
+        return _json_result(
+            find_dead_code_tool(
+                repo_name,
+                user_id=user_id,
+                max_results=max_results,
+            )
+        )
+    except ToolError as exc:
+        return _tool_response({"ok": False, "error": exc.message})
+
 
 def _bootstrap() -> None:
     logger.info("Initializing database and Qdrant collection for MCP tools…")

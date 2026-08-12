@@ -62,7 +62,10 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def repository_clone_path(self) -> Path:
-        return Path(self.repository_clone_dir).resolve()
+        path = Path(self.repository_clone_dir)
+        if path.is_absolute():
+            return path.resolve()
+        return (BACKEND_ROOT / path).resolve()
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,

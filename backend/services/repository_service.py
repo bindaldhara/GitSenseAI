@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from fastapi import HTTPException, status
 
 from config import settings
+from config import BACKEND_ROOT
 from db import db_cursor
 from parsers import clear_parsed_data, parse_repository
 from services.cleanup_hooks import (
@@ -198,6 +199,38 @@ def get_repository_by_full_name(full_name: str, user_id: int | None = None) -> d
         return row
 
 
+def resolve_repository_clone_path(stored: str | Path) -> Path:
+    """Map persisted clone paths to a directory readable by the current runtime.
+
+    Docker clones store absolute paths like ``/app/data/repos/owner/repo``. Host
+    MCP resolves those under ``backend/``. Legacy rows may use ``/app/app/data/...``.
+    """
+    raw = str(stored)
+    path = Path(raw)
+    candidates: list[Path] = []
+
+    if path.is_absolute():
+        candidates.append(path)
+        if raw.startswith("/app/"):
+            candidates.append((BACKEND_ROOT / raw.removeprefix("/app/")).resolve())
+    else:
+        candidates.append((BACKEND_ROOT / path).resolve())
+
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+
+    return candidates[0]
+
+
+def _persist_clone_path(clone_path: Path) -> str:
+    resolved = clone_path.resolve()
+    try:
+        return resolved.relative_to(BACKEND_ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
 def create_repository_submission(raw_url: str, user_id: int | None = None) -> dict:
     repository = parse_github_repository_url(raw_url)
 
@@ -244,7 +277,7 @@ def create_repository_submission(raw_url: str, user_id: int | None = None) -> di
 
 def delete_repository(repository_id: int) -> None:
     record = get_repository_by_id(repository_id)
-    clone_path = Path(record["clone_path"])
+    clone_path = resolve_repository_clone_path(record["clone_path"])
 
     cleanup_qdrant_for_repository(repository_id, record["full_name"])
     cleanup_graph_for_repository(repository_id, record["full_name"])
@@ -263,10 +296,11 @@ def delete_repository(repository_id: int) -> None:
 
 def reindex_repository(repository_id: int) -> dict:
     record = get_repository_by_id(repository_id)
+    clone_path = resolve_repository_clone_path(record["clone_path"])
     repository = ParsedRepository(
         url=record["url"],
         full_name=record["full_name"],
-        clone_path=Path(record["clone_path"]),
+        clone_path=clone_path,
         provider=record["provider"],
     )
 
@@ -296,6 +330,8 @@ def reindex_repository(repository_id: int) -> dict:
         repository.clone_path,
         default_branch=default_branch,
     )
+
+    _update_repository_clone_path(repository_id, repository.clone_path)
 
     # Placeholder for Day 5+ chunking/embeddings after a successful re-clone + parse.
     reembed_repository(repository_id, repository.full_name, str(repository.clone_path))
@@ -344,7 +380,7 @@ def insert_repository_record(repository: ParsedRepository, user_id: int | None =
             (
                 repository.url,
                 repository.full_name,
-                str(repository.clone_path),
+                _persist_clone_path(repository.clone_path),
                 "cloning",
                 repository.provider,
                 user_id,
@@ -357,6 +393,14 @@ def insert_repository_record(repository: ParsedRepository, user_id: int | None =
                 detail="Failed to create repository record.",
             )
         return row
+
+
+def _update_repository_clone_path(repository_id: int, clone_path: Path) -> None:
+    with db_cursor(commit=True) as cursor:
+        cursor.execute(
+            "UPDATE repositories SET clone_path = %s, updated_at = NOW() WHERE id = %s",
+            (_persist_clone_path(clone_path), repository_id),
+        )
 
 
 def mark_repository_status(
