@@ -4,7 +4,7 @@ FRONTEND_PORT := 5173
 BACKEND_PORT := 8000
 COMPOSE := docker compose
 
-.PHONY: frontend backend start-gitsense-ai check-frontend-port check-backend-port docker-build docker-up docker-down docker-logs
+.PHONY: frontend backend start-gitsense-ai check-frontend-port check-backend-port docker-build docker-up docker-down docker-logs mcp-server
 
 check-frontend-port:
 	@if lsof -tiTCP:$(FRONTEND_PORT) -sTCP:LISTEN >/dev/null; then \
@@ -58,6 +58,13 @@ docker-down:
 
 docker-logs:
 	$(COMPOSE) logs -f
+
+mcp-server:
+	@cd backend && \
+	if [ ! -d .venv ]; then python3 -m venv .venv; fi && \
+	source .venv/bin/activate && \
+	pip install -r requirements.txt && \
+	exec python mcp_server.py
 
 run-postgress-local:
 	brew services start postgresql@16

@@ -1,0 +1,13 @@
+# GitSense AI MCP — OpenAI Codex configuration example
+
+#
+# Replace ALL paths with your machine's absolute paths.
+
+[mcp_servers.gitsense-ai]
+enabled = true
+command = "/Users/YOU/Desktop/Projects/gitsense-ai/backend/.venv/bin/python"
+args = ["mcp_server.py"]
+cwd = "/Users/YOU/Desktop/Projects/gitsense-ai/backend"
+# clone_repo + indexing can exceed defaults
+startup_timeout_sec = 60
+tool_timeout_sec = 600

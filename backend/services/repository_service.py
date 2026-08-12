@@ -136,6 +136,68 @@ def get_repository_by_id(repository_id: int, user_id: int | None = None) -> dict
         return row
 
 
+def normalize_repository_full_name(raw: str) -> str:
+    """Normalize user input to owner/repo (accepts GitHub URLs or owner/repo)."""
+    value = raw.strip()
+    if not value:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Repository name is required.",
+        )
+
+    if value.startswith("http://") or value.startswith("https://"):
+        return parse_github_repository_url(value).full_name
+
+    if "github.com/" in value:
+        without_scheme = value.split("github.com/", 1)[1]
+        owner, repo = without_scheme.strip("/").split("/", 1)
+        return parse_github_repository_url(f"https://github.com/{owner}/{repo}").full_name
+
+    if "/" not in value:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Repository name must be owner/repo (e.g. octocat/Hello-World) or a GitHub URL.",
+        )
+
+    owner, repo = value.split("/", 1)
+    repo = repo.removesuffix(".git")
+    if not REPO_NAME_PATTERN.match(owner) or not REPO_NAME_PATTERN.match(repo):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Repository owner or name contains unsupported characters.",
+        )
+    return f"{owner}/{repo}"
+
+
+def get_repository_by_full_name(full_name: str, user_id: int | None = None) -> dict:
+    normalized = normalize_repository_full_name(full_name)
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, url, full_name, provider, status, clone_path, default_branch,
+                   user_id, created_at, updated_at
+            FROM repositories
+            WHERE lower(full_name) = lower(%s)
+            """,
+            (normalized,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    f"Repository '{normalized}' was not found. "
+                    "Clone it first with clone_repo."
+                ),
+            )
+        if user_id is not None and row.get("user_id") is not None and row["user_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this repository.",
+            )
+        return row
+
+
 def create_repository_submission(raw_url: str, user_id: int | None = None) -> dict:
     repository = parse_github_repository_url(raw_url)
 

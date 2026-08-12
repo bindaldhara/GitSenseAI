@@ -23,6 +23,17 @@ def get_user_by_id(user_id: int) -> dict | None:
         return cursor.fetchone()
 
 
+def get_user_id_by_email(email: str) -> int | None:
+    normalized = _normalize_email(email)
+    with db_cursor() as cursor:
+        cursor.execute(
+            "SELECT id FROM users WHERE email = %s",
+            (normalized,),
+        )
+        row = cursor.fetchone()
+        return int(row["id"]) if row else None
+
+
 def sync_user_from_supabase(supabase_id: str, email: str) -> dict:
     """Create or link a local user row for a Supabase-authenticated identity."""
     normalized = _normalize_email(email)

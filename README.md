@@ -260,6 +260,21 @@ make docker-logs
 **Admin console:** sign in as `admin@gmail.com` → redirected to http://localhost:5173/admin/ops
 
 
+## MCP tools
+
+Run the MCP server (stdio — for Cursor / Claude Desktop):
+
+```bash
+make mcp-server
+```
+
+| Tool | Description |
+|------|-------------|
+| `clone_repo(url)` | Clone, parse, and index a public GitHub repo |
+| `generate_docs(repo_name, doc_kind)` | README / API / onboarding markdown via RAG (`repo_name` = `owner/repo`) |
+
+Cursor: copy `config/mcp.cursor.example.json` into your MCP settings and set absolute paths to `backend/.venv/bin/python` and the `backend` directory.
+
 ## Future Enhancements
 
 - Real-time GitHub webhook indexing and incremental updates.
