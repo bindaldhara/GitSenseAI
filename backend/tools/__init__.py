@@ -1,5 +1,6 @@
 """MCP-compatible tools for repository operations (Day 15)."""
 
+from tools.ask_repo import ask_repo
 from tools.clone_repo import clone_repo
 from tools.find_dead_code import find_dead_code
 from tools.generate_docs import generate_docs
@@ -7,6 +8,7 @@ from tools.mcp_user import resolve_mcp_user_id
 from tools.preflight import require_mcp_infrastructure
 
 __all__ = [
+    "ask_repo",
     "clone_repo",
     "find_dead_code",
     "generate_docs",

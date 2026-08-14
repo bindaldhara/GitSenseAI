@@ -1,7 +1,7 @@
 """
 GitSense AI MCP server (Day 15).
 
-Exposes clone_repo, generate_docs, and find_dead_code for Cursor, Claude Desktop, and Codex.
+Exposes ask_repo, clone_repo, generate_docs, and find_dead_code for Cursor, Claude Desktop, and Codex.
 
 User scoping: MCP has no Supabase JWT. Pass optional owner_email (GitSense login email)
 to attach repos to that user; omit for public repos (visible to all logged-in users).
@@ -21,6 +21,7 @@ from typing import Literal
 from mcp.server.fastmcp import FastMCP
 
 from db import initialize_database
+from tools.ask_repo import ask_repo as ask_repo_tool
 from tools.clone_repo import clone_repo as clone_repo_tool
 from tools.errors import ToolError
 from tools.find_dead_code import find_dead_code as find_dead_code_tool
@@ -42,6 +43,36 @@ def _tool_response(payload: dict) -> str:
     if payload.get("ok"):
         return _json_result(payload)
     return _json_result({"ok": False, "error": payload.get("error", "Tool failed.")})
+
+
+@mcp.tool()
+def ask_repo(
+    repo_name: str,
+    question: str,
+    agent: Literal["auto", "code", "docs", "architecture"] = "auto",
+    owner_email: str | None = None,
+    top_k: int = 8,
+) -> str:
+    """Ask a natural-language question about an indexed repository.
+
+    Uses hybrid search and RAG over the full codebase. Returns a grounded answer
+    with source citations (file paths and line ranges). repo_name is owner/repo or
+    a GitHub URL. agent: auto (router), code, docs, or architecture. Pass
+    owner_email if the repository is user-owned.
+    """
+    try:
+        user_id = resolve_mcp_user_id(owner_email)
+        return _json_result(
+            ask_repo_tool(
+                repo_name,
+                question,
+                agent=agent,
+                top_k=top_k,
+                user_id=user_id,
+            )
+        )
+    except ToolError as exc:
+        return _tool_response({"ok": False, "error": exc.message})
 
 
 @mcp.tool()

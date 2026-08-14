@@ -270,6 +270,7 @@ make mcp-server
 
 | Tool | Description |
 |------|-------------|
+| `ask_repo(repo_name, question, agent)` | Natural-language Q&A with cited sources (`agent`: auto, code, docs, architecture) |
 | `clone_repo(url, force_reindex)` | Clone, parse, and index a public GitHub repo (auto re-indexes if clone is missing) |
 | `generate_docs(repo_name, doc_kind)` | README / API / onboarding markdown via RAG (`repo_name` = `owner/repo`) |
 | `find_dead_code(repo_name, max_results)` | Report likely-unused functions, classes, and types for review |
