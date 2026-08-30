@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 import redis
-from qdrant_client import QdrantClient
+from vector_store.qdrant_store import get_qdrant_client
 
 from config import settings
 from db import db_cursor
@@ -59,7 +59,7 @@ def _check_redis() -> ServiceHealth:
 
 def _check_qdrant() -> ServiceHealth:
     try:
-        client = QdrantClient(url=settings.qdrant_url)
+        client = get_qdrant_client()
         client.get_collections()
         return ServiceHealth(name="qdrant", status="healthy")
     except Exception as exc:

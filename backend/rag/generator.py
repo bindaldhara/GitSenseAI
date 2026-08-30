@@ -6,8 +6,8 @@ import logging
 
 import httpx
 from fastapi import HTTPException, status
-from openai import OpenAI
 
+from openai_client import openai_chat_client
 from config import settings
 from rag.prompts import AgentProfile, build_chat_messages
 from rag.retriever import format_chunk_for_prompt
@@ -28,13 +28,7 @@ def _generate_with_openai(
     history: list[dict[str, str]],
     agent_profile: AgentProfile = "code",
 ) -> str:
-    if not settings.openai_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY is not configured.",
-        )
-
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = openai_chat_client()
     messages = build_chat_messages(
         question=question,
         repository_full_name=repository_full_name,

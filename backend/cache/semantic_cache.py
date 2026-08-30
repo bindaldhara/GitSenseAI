@@ -2,7 +2,7 @@
 
 Unlike exact-match caches, semantic caching embeds the user question and
 returns a prior answer when a previously cached question is *similar enough*
-(cosine similarity on Sentence Transformer embeddings).
+(cosine similarity on the same ONNX MiniLM embeddings used for retrieval).
 """
 
 from __future__ import annotations

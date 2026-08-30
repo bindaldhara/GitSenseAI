@@ -11,7 +11,7 @@ tree-sitter-python
 tree-sitter-javascript
 tree-sitter-typescript
 tree-sitter-go
-sentence-transformers
+fastembed
 openai
 langchain
 langchain-classic

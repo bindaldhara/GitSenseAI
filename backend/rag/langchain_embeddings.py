@@ -1,4 +1,4 @@
-"""LangChain Embeddings adapter for Sentence Transformers."""
+"""LangChain Embeddings adapter for the FastEmbed ONNX model."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from vector_store.embeddings import embed_texts
 
 
 class SentenceTransformerEmbeddings(Embeddings):
-    """Wrap the Day 5 embedding model for LangChain retrievers and vector stores."""
+    """Wrap the local ONNX embedding model for LangChain retrievers and vector stores."""
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return embed_texts(texts)

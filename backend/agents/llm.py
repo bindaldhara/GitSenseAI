@@ -6,9 +6,9 @@ import logging
 
 import httpx
 from fastapi import HTTPException, status
-from openai import OpenAI
 
 from config import settings
+from openai_client import openai_chat_client
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +41,7 @@ def invoke_llm_text(*, system: str, user: str, temperature: float = 0.0) -> str:
         content = response.json().get("message", {}).get("content", "")
         return str(content).strip()
 
-    if not settings.openai_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OPENAI_API_KEY is not configured.",
-        )
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = openai_chat_client()
     response = client.chat.completions.create(
         model=settings.openai_model,
         messages=[

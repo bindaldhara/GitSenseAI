@@ -24,7 +24,7 @@ GitSense AI is a production-oriented platform for understanding large software r
 - **Languages**: Python 3.12, TypeScript
 - **Frontend**: React, Vite, Tailwind CSS, React Router, React Query, Axios, React Markdown, Lucide React
 - **Backend**: FastAPI, Uvicorn, Pydantic Settings, psycopg
-- **AI / agents**: LangGraph, LangChain, OpenAI / Ollama, Sentence Transformers (`all-MiniLM-L6-v2`)
+- **AI / agents**: LangGraph, LangChain, OpenAI / Ollama / OpenRouter, FastEmbed ONNX (`all-MiniLM-L6-v2`)
 - **Retrieval**: Qdrant, BM25 (LangChain), hybrid RRF fusion, cross-encoder rerank
 - **Parsing**: tree-sitter (Go, Python, JavaScript, TypeScript)
 - **Databases**: PostgreSQL (metadata, graph, users, conversations), Redis (cache), Qdrant (vectors)

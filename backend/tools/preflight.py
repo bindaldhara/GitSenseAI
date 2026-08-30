@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 
 import redis
-from qdrant_client import QdrantClient
 
 from config import settings
 from db import db_cursor
 from tools.errors import ToolError
+from vector_store.qdrant_store import get_qdrant_client
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def require_mcp_infrastructure() -> None:
         )
 
     try:
-        QdrantClient(url=settings.qdrant_url).get_collections()
+        get_qdrant_client().get_collections()
     except Exception as exc:
         logger.warning("Qdrant preflight failed: %s", exc)
         errors.append(

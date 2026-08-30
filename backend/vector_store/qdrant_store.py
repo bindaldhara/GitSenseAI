@@ -53,9 +53,15 @@ class RetrievedChunk:
     score: float
 
 
-def _client() -> QdrantClient:
+def get_qdrant_client() -> QdrantClient:
     """Create a short-lived Qdrant client (HTTP, no persistent connection pool)."""
+    if settings.qdrant_api_key:
+        return QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
     return QdrantClient(url=settings.qdrant_url)
+
+
+def _client() -> QdrantClient:
+    return get_qdrant_client()
 
 
 def ensure_collection() -> None:
@@ -63,7 +69,7 @@ def ensure_collection() -> None:
 
     Called once during app startup and before the first upsert.  Uses
     **Cosine** distance which pairs well with L2-normalized embeddings
-    produced by Sentence Transformers.
+    produced by FastEmbed (ONNX MiniLM).
     """
     client = _client()
     try:

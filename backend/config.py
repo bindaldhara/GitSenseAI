@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,10 +21,13 @@ class Settings(BaseSettings):
     postgres_port: int
     redis_url: str 
     qdrant_url: str
+    qdrant_api_key: str | None = None
     repository_clone_dir: str
     llm_provider: str = "ollama"
     openai_api_key: str | None = None
+    openai_base_url: str | None = None
     openai_model: str = "gpt-4o-mini"
+    postgres_sslmode: str | None = None
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     bm25_index_dir: str = "data/bm25_indices"
@@ -31,7 +35,7 @@ class Settings(BaseSettings):
     hybrid_rrf_k: int = 60
     hybrid_candidate_multiplier: int = 4
     rerank_enabled: bool = True
-    rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     semantic_cache_enabled: bool = True
     semantic_cache_similarity_threshold: float = 0.85
     semantic_cache_ttl_seconds: int = 86_400
@@ -54,10 +58,14 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def database_url(self) -> str:
-        return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+        password = quote_plus(self.postgres_password)
+        url = (
+            f"postgresql://{quote_plus(self.postgres_user)}:{password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+        if self.postgres_sslmode:
+            return f"{url}?sslmode={self.postgres_sslmode}"
+        return url
 
     @computed_field
     @property

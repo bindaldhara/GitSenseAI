@@ -11,13 +11,14 @@ RUN apt-get update \
 
 COPY backend/requirements.txt /tmp/requirements.txt
 
-# Install CPU-only PyTorch first — sentence-transformers depends on torch and the
-# default wheel can end up with an invalid/cross-arch binary in slim images.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r /tmp/requirements.txt
+# FastEmbed + ONNX Runtime — no PyTorch. Keep the image small enough for Render Free.
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY backend /app
 
+ENV FASTEMBED_CACHE_PATH=/tmp/fastembed
+ENV PORT=8000
+
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
