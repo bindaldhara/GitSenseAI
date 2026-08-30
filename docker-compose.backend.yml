@@ -1,0 +1,19 @@
+# Backend-only deploy (external Postgres, Redis, Qdrant).
+# Usage: docker compose -f docker-compose.backend.yml up -d --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: gitsense-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      - gitsense_backend_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  gitsense_backend_data:

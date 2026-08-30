@@ -1,0 +1,138 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend-ec2
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .env from GitHub secrets and variables
+        env:
+          # --- Variables (Settings → Secrets and variables → Actions → Variables) ---
+          FRONTEND_ORIGIN: ${{ vars.FRONTEND_ORIGIN }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+          POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+          POSTGRES_SSLMODE: ${{ vars.POSTGRES_SSLMODE }}
+          REDIS_URL: ${{ vars.REDIS_URL }}
+          QDRANT_URL: ${{ vars.QDRANT_URL }}
+          REPOSITORY_CLONE_DIR: ${{ vars.REPOSITORY_CLONE_DIR }}
+          BM25_INDEX_DIR: ${{ vars.BM25_INDEX_DIR }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
+          OLLAMA_MODEL: ${{ vars.OLLAMA_MODEL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+          HYBRID_SEARCH_ENABLED: ${{ vars.HYBRID_SEARCH_ENABLED }}
+          RERANK_ENABLED: ${{ vars.RERANK_ENABLED }}
+          GRAPH_RAG_ENABLED: ${{ vars.GRAPH_RAG_ENABLED }}
+          AGENTS_ENABLED: ${{ vars.AGENTS_ENABLED }}
+          SEMANTIC_CACHE_ENABLED: ${{ vars.SEMANTIC_CACHE_ENABLED }}
+          AUTH_ENABLED: ${{ vars.AUTH_ENABLED }}
+          BACKEND_PORT: ${{ vars.BACKEND_PORT }}
+          # --- Secrets (Settings → Secrets and variables → Actions → Secrets) ---
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          required_vars=(
+            FRONTEND_ORIGIN
+            POSTGRES_DB
+            POSTGRES_USER
+            POSTGRES_HOST
+            POSTGRES_PORT
+            REDIS_URL
+            QDRANT_URL
+            SUPABASE_URL
+          )
+          for key in "${required_vars[@]}"; do
+            if [ -z "${!key:-}" ]; then
+              echo "Missing required GitHub variable: $key"
+              exit 1
+            fi
+          done
+
+          if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+            echo "Missing required GitHub secret: POSTGRES_PASSWORD"
+            exit 1
+          fi
+
+          cat > .env <<EOF
+FRONTEND_ORIGIN=${FRONTEND_ORIGIN}
+POSTGRES_DB=${POSTGRES_DB}
+POSTGRES_USER=${POSTGRES_USER}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+POSTGRES_HOST=${POSTGRES_HOST}
+POSTGRES_PORT=${POSTGRES_PORT}
+POSTGRES_SSLMODE=${POSTGRES_SSLMODE:-}
+REDIS_URL=${REDIS_URL}
+QDRANT_URL=${QDRANT_URL}
+QDRANT_API_KEY=${QDRANT_API_KEY:-}
+REPOSITORY_CLONE_DIR=${REPOSITORY_CLONE_DIR:-/app/data/repos}
+BM25_INDEX_DIR=${BM25_INDEX_DIR:-/app/data/bm25_indices}
+LLM_PROVIDER=${LLM_PROVIDER:-openai}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
+OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+SUPABASE_URL=${SUPABASE_URL}
+SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
+AUTH_ENABLED=${AUTH_ENABLED:-true}
+ADMIN_EMAIL=${ADMIN_EMAIL:-admin@gmail.com}
+HYBRID_SEARCH_ENABLED=${HYBRID_SEARCH_ENABLED:-true}
+RERANK_ENABLED=${RERANK_ENABLED:-true}
+GRAPH_RAG_ENABLED=${GRAPH_RAG_ENABLED:-true}
+AGENTS_ENABLED=${AGENTS_ENABLED:-true}
+SEMANTIC_CACHE_ENABLED=${SEMANTIC_CACHE_ENABLED:-true}
+EOF
+
+          chmod 600 .env
+          echo "Created .env for backend deploy"
+
+      - name: Build and start backend
+        env:
+          BACKEND_PORT: ${{ vars.BACKEND_PORT }}
+        run: |
+          docker compose -f docker-compose.backend.yml up -d --build --remove-orphans
+
+      - name: Wait for backend health
+        env:
+          BACKEND_PORT: ${{ vars.BACKEND_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${BACKEND_PORT:-8000}"
+          for attempt in $(seq 1 36); do
+            if curl -fsS "http://localhost:${PORT}/api/v1/health" >/dev/null; then
+              echo "Backend is healthy on port ${PORT}"
+              exit 0
+            fi
+            echo "Waiting for backend... ($attempt/36)"
+            sleep 5
+          done
+          echo "Backend failed health check"
+          docker compose -f docker-compose.backend.yml ps
+          docker compose -f docker-compose.backend.yml logs --tail=120 backend
+          exit 1
+
+      - name: Prune unused Docker images
+        if: success()
+        run: docker image prune -f

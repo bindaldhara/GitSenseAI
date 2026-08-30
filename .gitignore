@@ -31,3 +31,5 @@ docs/
 .dockerignore
 
 .codex/config.toml
+
+gitsense-ai.pem
