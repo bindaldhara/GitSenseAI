@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes import admin, auth, chat, conversations, diagram, graph, health, repositories, retrieval_lab, root, search
 from config import settings
 from db import initialize_database
+from vector_store.embeddings import embed_texts
 from vector_store.qdrant_store import ensure_collection
 
 
@@ -13,6 +14,9 @@ from vector_store.qdrant_store import ensure_collection
 async def lifespan(_: FastAPI):
     initialize_database()
     ensure_collection()
+    # Download/load the ONNX model at boot so clone/reindex requests do not
+    # pay the Hugging Face fetch cost inside a single HTTP timeout on Render.
+    embed_texts(["warmup"])
     yield
 
 app = FastAPI(

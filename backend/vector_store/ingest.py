@@ -79,14 +79,23 @@ def embed_repository(repository_id: int, clone_path: str | Path) -> dict:
 
     for i in range(0, len(all_texts), EMBED_BATCH_SIZE):
         batch_texts = all_texts[i : i + EMBED_BATCH_SIZE]
-        batch_vectors = embed_texts(batch_texts)
+        try:
+            batch_vectors = embed_texts(batch_texts)
+        except Exception:
+            logger.exception(
+                "FastEmbed failed for repository_id=%s (batch %s-%s).",
+                repository_id,
+                i,
+                i + len(batch_texts),
+            )
+            raise
         all_vectors.extend(batch_vectors)
 
     # 3. Build payloads and upsert
     chunks_with_vectors: list[tuple[dict, list[float]]] = []
     for chunk, vector in zip(chunk_result.chunks, all_vectors):
         payload = {
-            "repository_id": chunk.repository_id,
+            "repository_id": int(chunk.repository_id),
             "file_path": chunk.file_path,
             "language": chunk.language,
             "chunk_kind": chunk.kind,

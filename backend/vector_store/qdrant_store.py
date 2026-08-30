@@ -25,6 +25,7 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     MatchValue,
+    PayloadSchemaType,
     PointStruct,
     VectorParams,
 )
@@ -64,6 +65,21 @@ def _client() -> QdrantClient:
     return get_qdrant_client()
 
 
+def _ensure_payload_indexes(client: QdrantClient) -> None:
+    """Index fields we filter on (required for reliable count/search on Qdrant Cloud)."""
+    try:
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name="repository_id",
+            field_schema=PayloadSchemaType.INTEGER,
+        )
+        logger.info("Ensured Qdrant payload index on repository_id.")
+    except UnexpectedResponse as exc:
+        logger.debug("repository_id payload index already exists or not needed: %s", exc)
+    except Exception:
+        logger.warning("Could not create repository_id payload index.", exc_info=True)
+
+
 def ensure_collection() -> None:
     """Create the code collection if it does not already exist.
 
@@ -72,11 +88,16 @@ def ensure_collection() -> None:
     produced by FastEmbed (ONNX MiniLM).
     """
     client = _client()
+    created = False
     try:
         client.get_collection(COLLECTION_NAME)
         logger.debug("Qdrant collection '%s' already exists.", COLLECTION_NAME)
-    except (UnexpectedResponse, Exception):
-        logger.info("Creating Qdrant collection '%s' (dim=%s, cosine).", COLLECTION_NAME, EMBEDDING_DIMENSION)
+    except UnexpectedResponse:
+        logger.info(
+            "Creating Qdrant collection '%s' (dim=%s, cosine).",
+            COLLECTION_NAME,
+            EMBEDDING_DIMENSION,
+        )
         client.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
@@ -84,6 +105,10 @@ def ensure_collection() -> None:
                 distance=Distance.COSINE,
             ),
         )
+        created = True
+    _ensure_payload_indexes(client)
+    if created:
+        logger.info("Qdrant collection '%s' ready.", COLLECTION_NAME)
 
 
 def upsert_chunks(
@@ -166,17 +191,31 @@ def delete_repository_points(repository_id: int) -> int:
 def count_repository_points(repository_id: int) -> int:
     """Return the exact number of points stored for a repository."""
     client = _client()
+    repo_filter = Filter(
+        must=[FieldCondition(key="repository_id", match=MatchValue(value=int(repository_id)))]
+    )
     try:
         result = client.count(
             collection_name=COLLECTION_NAME,
-            count_filter=Filter(
-                must=[FieldCondition(key="repository_id", match=MatchValue(value=repository_id))]
-            ),
+            count_filter=repo_filter,
             exact=True,
         )
         return result.count
     except Exception:
-        logger.warning("Could not count Qdrant points for repository_id=%s.", repository_id, exc_info=True)
+        logger.error(
+            "Qdrant count failed for repository_id=%s — check QDRANT_URL/API key and payload index.",
+            repository_id,
+            exc_info=True,
+        )
+        try:
+            total = client.count(collection_name=COLLECTION_NAME, exact=True).count
+            logger.error(
+                "Collection '%s' has %s total points (unfiltered).",
+                COLLECTION_NAME,
+                total,
+            )
+        except Exception:
+            logger.error("Could not read total Qdrant collection count.", exc_info=True)
         return 0
 
 
