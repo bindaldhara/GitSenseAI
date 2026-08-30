@@ -1,0 +1,61 @@
+# Render Blueprint — backend only.
+# Postgres (Supabase), Redis (Redis Cloud), and Qdrant (Qdrant Cloud) are external.
+# After deploy, set secret env vars in the Render dashboard (sync: false keys).
+
+services:
+  - type: web
+    name: gitsense-backend
+    runtime: docker
+    dockerfilePath: docker/backend.Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: POSTGRES_DB
+        value: postgres
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        value: "5432"
+      - key: POSTGRES_SSLMODE
+        value: require
+      - key: REDIS_URL
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: REPOSITORY_CLONE_DIR
+        value: /tmp/repos
+      - key: BM25_INDEX_DIR
+        value: /tmp/bm25_indices
+      - key: LLM_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: OPENAI_MODEL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: AUTH_ENABLED
+        value: "true"
+      - key: ADMIN_EMAIL
+        value: admin@gmail.com
+      - key: HYBRID_SEARCH_ENABLED
+        value: "true"
+      - key: RERANK_ENABLED
+        value: "true"
+      - key: GRAPH_RAG_ENABLED
+        value: "true"
+      - key: AGENTS_ENABLED
+        value: "true"
+      - key: SEMANTIC_CACHE_ENABLED
+        value: "true"
