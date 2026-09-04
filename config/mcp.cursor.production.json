@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "gitsense": {
+      "url": "https://api.gitsense.dharabindal.com/mcp"
+    }
+  }
+}

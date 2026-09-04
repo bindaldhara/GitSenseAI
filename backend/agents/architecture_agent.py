@@ -26,7 +26,7 @@ def _format_diagram_answer(payload: dict) -> str:
             f"### {payload['title']}\n\n"
             f"{payload['description']}\n\n"
             f"```mermaid\n{mermaid}\n```\n\n"
-            "_Click the image to see fully_"
+            "_Click to view full image_"
         )
         return body
     return (

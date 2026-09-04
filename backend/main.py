@@ -6,8 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.routes import admin, auth, chat, conversations, diagram, graph, health, repositories, retrieval_lab, root, search
 from config import settings
 from db import initialize_database
+from mcp_server import get_mcp_http_app
 from vector_store.embeddings import embed_texts
 from vector_store.qdrant_store import ensure_collection
+
+mcp_http_app = get_mcp_http_app()
 
 
 @asynccontextmanager
@@ -17,7 +20,8 @@ async def lifespan(_: FastAPI):
     # Download/load the ONNX model at boot so clone/reindex requests do not
     # pay the Hugging Face fetch cost inside a single HTTP timeout on Render.
     embed_texts(["warmup"])
-    yield
+    async with mcp_http_app.router.lifespan_context(mcp_http_app):
+        yield
 
 app = FastAPI(
     title=settings.app_name,
@@ -45,3 +49,5 @@ app.include_router(search.router, prefix=settings.api_v1_prefix)
 app.include_router(chat.router, prefix=settings.api_v1_prefix)
 app.include_router(retrieval_lab.router, prefix=settings.api_v1_prefix)
 app.include_router(admin.router, prefix=settings.api_v1_prefix)
+
+app.mount("/mcp", mcp_http_app)

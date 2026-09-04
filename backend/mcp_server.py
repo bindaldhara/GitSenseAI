@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from db import initialize_database
 from tools.ask_repo import ask_repo as ask_repo_tool
@@ -32,7 +34,28 @@ from vector_store.qdrant_store import ensure_collection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("GitSense AI")
+
+def _transport_security() -> TransportSecuritySettings:
+    hosts = os.getenv(
+        "MCP_ALLOWED_HOSTS",
+        "api.gitsense.dharabindal.com,localhost,127.0.0.1",
+    )
+    origins = os.getenv(
+        "MCP_ALLOWED_ORIGINS",
+        "https://gitsense.dharabindal.com,https://api.gitsense.dharabindal.com",
+    )
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[host.strip() for host in hosts.split(",") if host.strip()],
+        allowed_origins=[origin.strip() for origin in origins.split(",") if origin.strip()],
+    )
+
+
+mcp = FastMCP(
+    "GitSense AI",
+    streamable_http_path="/",
+    transport_security=_transport_security(),
+)
 
 
 def _json_result(payload: dict) -> str:
@@ -157,6 +180,11 @@ def _bootstrap() -> None:
     except Exception as exc:
         logger.error("Bootstrap failed: %s", exc)
         logger.error("Start infrastructure: make docker-up")
+
+
+def get_mcp_http_app():
+    """ASGI app for Streamable HTTP MCP at /mcp when mounted on FastAPI."""
+    return mcp.streamable_http_app()
 
 
 if __name__ == "__main__":

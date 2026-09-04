@@ -1,9 +1,12 @@
 {
   "mcpServers": {
-    "gitsense-ai": {
+    "gitsense-local": {
       "command": "/absolute/path/to/gitsense-ai/backend/.venv/bin/python",
       "args": ["mcp_server.py"],
       "cwd": "/absolute/path/to/gitsense-ai/backend"
+    },
+    "gitsense": {
+      "url": "https://api.gitsense.dharabindal.com/mcp"
     }
   }
 }
